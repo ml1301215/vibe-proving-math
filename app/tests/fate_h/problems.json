@@ -1,0 +1,37 @@
+[
+  {
+    "id": "FATE-H-001",
+    "difficulty": "H",
+    "category": "group_theory",
+    "informal_statement": "Let G be a finite group and p the smallest prime dividing |G|. Prove that any subgroup of index p in G is normal.",
+    "expected_status": ["proved", "partial", "No confident solution"]
+  },
+  {
+    "id": "FATE-H-002",
+    "difficulty": "H",
+    "category": "group_theory",
+    "informal_statement": "Prove that every group of order p^2 (p prime) is abelian.",
+    "expected_status": ["proved", "partial", "direct_hit"]
+  },
+  {
+    "id": "FATE-H-003",
+    "difficulty": "H",
+    "category": "ring_theory",
+    "informal_statement": "Let R be a commutative ring with 1. Prove that an ideal P of R is prime if and only if R/P is an integral domain.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-H-004",
+    "difficulty": "H",
+    "category": "group_theory",
+    "informal_statement": "Prove that every finite group G of order p^n (p prime) has a non-trivial center.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-H-005",
+    "difficulty": "H",
+    "category": "algebraic_number_theory",
+    "informal_statement": "Prove that the multiplicative group of a finite field F_q is cyclic.",
+    "expected_status": ["proved", "partial", "direct_hit"]
+  }
+]

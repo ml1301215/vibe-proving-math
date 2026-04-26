@@ -1,0 +1,263 @@
+[
+  {
+    "id": "nat_add_comm",
+    "category": "direct_hit",
+    "statement": "对任意自然数 a, b，有 a + b = b + a",
+    "keywords": ["Nat.add_comm", "addition commutative", "natural number"],
+    "expected_search_terms": ["nat.add_comm", "nat", "add_comm"],
+    "github_candidates": [
+      {
+        "name": "Basic.lean",
+        "path": "Mathlib/Data/Nat/Basic.lean",
+        "html_url": "https://example.com/mathlib/nat/add_comm",
+        "snippet": "theorem Nat.add_comm (a b : Nat) : a + b = b + a := by omega"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.95,
+      "lean_name": "Nat.add_comm",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Mathlib/Data/Nat/Basic.lean"
+  },
+  {
+    "id": "nat_add_zero",
+    "category": "direct_hit",
+    "statement": "对任意自然数 n，有 n + 0 = n",
+    "keywords": ["Nat.add_zero", "add zero", "natural number"],
+    "expected_search_terms": ["nat.add_zero", "nat", "add_zero"],
+    "github_candidates": [
+      {
+        "name": "Basic.lean",
+        "path": "Mathlib/Data/Nat/Basic.lean",
+        "html_url": "https://example.com/mathlib/nat/add_zero",
+        "snippet": "theorem Nat.add_zero (n : Nat) : n + 0 = n := rfl"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.93,
+      "lean_name": "Nat.add_zero",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Mathlib/Data/Nat/Basic.lean"
+  },
+  {
+    "id": "dvd_trans",
+    "category": "direct_hit",
+    "statement": "若自然数 m 整除 n，且 n 整除 k，则 m 整除 k",
+    "keywords": ["divides transitive", "dvd_trans", "natural number"],
+    "expected_search_terms": ["dvd_trans", "dvd", "nat"],
+    "github_candidates": [
+      {
+        "name": "Defs.lean",
+        "path": "Mathlib/Algebra/Divisibility/Defs.lean",
+        "html_url": "https://example.com/mathlib/dvd_trans",
+        "snippet": "theorem dvd_trans : a ∣ b → b ∣ c → a ∣ c := fun hab hbc => dvd_trans hab hbc"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.9,
+      "lean_name": "dvd_trans",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Divisibility"
+  },
+  {
+    "id": "sq_nonneg_template",
+    "category": "direct_hit",
+    "statement": "对任意实数 x，有 x^2 ≥ 0",
+    "keywords": ["square nonnegative", "sq_nonneg", "real number"],
+    "expected_search_terms": ["sq_nonneg", "real"],
+    "github_candidates": [
+      {
+        "name": "Order.lean",
+        "path": "Mathlib/Algebra/Order/Ring/Defs.lean",
+        "html_url": "https://example.com/mathlib/sq_nonneg",
+        "snippet": "theorem sq_nonneg (a : α) : 0 ≤ a ^ 2 := by positivity"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.92,
+      "lean_name": "sq_nonneg",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Order"
+  },
+  {
+    "id": "two_mul_le_add_sq",
+    "category": "direct_hit",
+    "statement": "对任意实数 a, b，有 a^2 + b^2 ≥ 2ab",
+    "keywords": ["am gm", "square inequality", "real number"],
+    "expected_search_terms": ["two_mul_le_add_sq", "sq_nonneg", "real"],
+    "github_candidates": [
+      {
+        "name": "Basic.lean",
+        "path": "Mathlib/Algebra/Order/Field/Basic.lean",
+        "html_url": "https://example.com/mathlib/two_mul_le_add_sq",
+        "snippet": "theorem two_mul_le_add_sq (a b : α) : 2 * a * b ≤ a ^ 2 + b ^ 2 := by nlinarith [sq_nonneg (a - b)]"
+      },
+      {
+        "name": "Other.lean",
+        "path": "Mathlib/Algebra/Order/Ring/Unrelated.lean",
+        "html_url": "https://example.com/mathlib/other",
+        "snippet": "theorem add_sq (a b : α) : (a + b) ^ 2 = a ^ 2 + 2 * a * b + b ^ 2 := by ring"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.94,
+      "lean_name": "Mathlib.Algebra.Order.Field.Basic.two_mul_le_add_sq",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Field/Basic.lean"
+  },
+  {
+    "id": "mul_assoc",
+    "category": "direct_hit",
+    "statement": "对任意群元素 a, b, c，有 (a * b) * c = a * (b * c)",
+    "keywords": ["mul_assoc", "associativity multiplication", "group"],
+    "expected_search_terms": ["mul_assoc", "assoc"],
+    "github_candidates": [
+      {
+        "name": "Defs.lean",
+        "path": "Mathlib/Algebra/Group/Defs.lean",
+        "html_url": "https://example.com/mathlib/mul_assoc",
+        "snippet": "theorem mul_assoc (a b c : α) : a * b * c = a * (b * c) := by simpa [mul_assoc]"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.91,
+      "lean_name": "mul_assoc",
+      "best_index": 0
+    },
+    "expect_early_return": true,
+    "expected_path_contains": "Group/Defs.lean"
+  },
+  {
+    "id": "gauss_sum_ambiguous",
+    "category": "ambiguous_hit",
+    "statement": "对任意自然数 n，有 1 + 2 + ... + n = n(n+1)/2",
+    "keywords": ["gauss sum", "sum of naturals", "natural number"],
+    "expected_search_terms": ["sum_range", "gauss_sum", "nat"],
+    "github_candidates": [
+      {
+        "name": "Basic.lean",
+        "path": "Mathlib/Algebra/BigOperators/Basic.lean",
+        "html_url": "https://example.com/mathlib/sum_range",
+        "snippet": "theorem Finset.sum_range_succ : ∑ x in range (n + 1), f x = ∑ x in range n, f x + f n := by simp"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.68,
+      "lean_name": "Finset.sum_range_succ",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": "BigOperators"
+  },
+  {
+    "id": "dvd_wrong_candidate",
+    "category": "ambiguous_hit",
+    "statement": "若自然数 m 整除 n，且 n 整除 k，则 m 整除 k",
+    "keywords": ["divides", "transitive", "natural number"],
+    "expected_search_terms": ["dvd_trans", "dvd", "nat"],
+    "github_candidates": [
+      {
+        "name": "Defs.lean",
+        "path": "Mathlib/Algebra/Divisibility/Defs.lean",
+        "html_url": "https://example.com/mathlib/dvd_add",
+        "snippet": "theorem dvd_add : a ∣ b → a ∣ c → a ∣ b + c := by intro hab hac; exact dvd_add hab hac"
+      }
+    ],
+    "validate": {
+      "match": false,
+      "score": 0.0,
+      "lean_name": "",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": "Divisibility"
+  },
+  {
+    "id": "off_by_domain",
+    "category": "ambiguous_hit",
+    "statement": "对任意整数 a, b，有 a^2 + b^2 ≥ 2ab",
+    "keywords": ["square inequality", "integer", "am gm"],
+    "expected_search_terms": ["two_mul_le_add_sq", "int"],
+    "github_candidates": [
+      {
+        "name": "Basic.lean",
+        "path": "Mathlib/Algebra/Order/Field/Basic.lean",
+        "html_url": "https://example.com/mathlib/two_mul_le_add_sq_real",
+        "snippet": "theorem two_mul_le_add_sq (a b : α) : 2 * a * b ≤ a ^ 2 + b ^ 2 := by nlinarith [sq_nonneg (a - b)]"
+      }
+    ],
+    "validate": {
+      "match": true,
+      "score": 0.71,
+      "lean_name": "two_mul_le_add_sq",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": "Field/Basic.lean"
+  },
+  {
+    "id": "goldbach_negative",
+    "category": "no_hit",
+    "statement": "证明哥德巴赫猜想",
+    "keywords": ["goldbach conjecture", "prime numbers", "even integers"],
+    "expected_search_terms": ["goldbach_conjecture", "prime_numbers"],
+    "github_candidates": [],
+    "validate": {
+      "match": false,
+      "score": 0.0,
+      "lean_name": "",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": ""
+  },
+  {
+    "id": "epsilon_light_negative",
+    "category": "no_hit",
+    "statement": "是否存在常数 c > 0，使得任意图都含有大小至少为 cε|V| 的 ε-轻子集？",
+    "keywords": ["epsilon light subset", "graph laplacian", "positive semidefinite"],
+    "expected_search_terms": ["graph_laplacian", "positive_semidefinite"],
+    "github_candidates": [],
+    "validate": {
+      "match": false,
+      "score": 0.0,
+      "lean_name": "",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": ""
+  },
+  {
+    "id": "boxplus_negative",
+    "category": "no_hit",
+    "statement": "若 p(x) 和 q(x) 为实根首一多项式，是否有 1/Φ_n(p ⊞_n q) ≥ 1/Φ_n(p) + 1/Φ_n(q)？",
+    "keywords": ["boxplus polynomial", "real rooted polynomial", "phi_n"],
+    "expected_search_terms": ["real_rooted_polynomial", "phi_n"],
+    "github_candidates": [],
+    "validate": {
+      "match": false,
+      "score": 0.0,
+      "lean_name": "",
+      "best_index": 0
+    },
+    "expect_early_return": false,
+    "expected_path_contains": ""
+  }
+]

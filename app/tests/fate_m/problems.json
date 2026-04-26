@@ -1,0 +1,37 @@
+[
+  {
+    "id": "FATE-M-001",
+    "difficulty": "M",
+    "category": "number_theory",
+    "informal_statement": "Prove that for any integers a and b, if a divides b and b divides a, then a = ±b.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-M-002",
+    "difficulty": "M",
+    "category": "group_theory",
+    "informal_statement": "Let G be a group and H be a subgroup of G. Prove that the left coset relation 'a ~ b iff a⁻¹b ∈ H' is an equivalence relation.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-M-003",
+    "difficulty": "M",
+    "category": "linear_algebra",
+    "informal_statement": "Prove that if A is an n×n matrix over a field, then A is invertible if and only if det(A) ≠ 0.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-M-004",
+    "difficulty": "M",
+    "category": "real_analysis",
+    "informal_statement": "Prove that the sum of a convergent sequence with limit L and a convergent sequence with limit M is a convergent sequence with limit L+M.",
+    "expected_status": ["proved", "partial"]
+  },
+  {
+    "id": "FATE-M-005",
+    "difficulty": "M",
+    "category": "number_theory",
+    "informal_statement": "Prove Fermat's little theorem: if p is prime and gcd(a, p) = 1, then a^(p-1) ≡ 1 (mod p).",
+    "expected_status": ["proved", "partial", "direct_hit"]
+  }
+]

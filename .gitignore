@@ -1,0 +1,113 @@
+# ──────── Python ────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# ──────── 虚拟环境 ────────
+.venv/
+venv/
+env/
+ENV/
+
+# ──────── Node / 前端 ────────
+node_modules/
+.npm/
+*.log
+npm-debug.log*
+
+# ──────── 编辑器 / OS ────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ──────── 项目专属：服务日志 ────────
+app_server_*.log
+app/_iter_*.log
+app/_inspect*.py
+app/_check*.py
+app/_test*.js
+
+# ──────── 评估产物与本地实验 ────────
+app/eval_screenshots/
+app/eval_report.html
+app/eval_results.json
+app/eval_results_real_backend_full.json
+app/.eval_cache_api.json
+app/eval_cache/
+eval_raw_outputs*.json
+eval_results.json
+run_eval.py
+mineru_sample_candestroy.md
+real_math_paper_*.pdf
+app/run_formalization_retrieval_benchmark.py
+app/scripts/
+
+# ──────── 本地数据 / 缓存 ────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+.cache/
+data/cache/
+data/memory/
+data/raw/
+
+# ──────── 密钥 / 配置（勿提交真实密钥） ────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.toml
+config.local.toml
+app/config.toml
+
+# ──────── 版权敏感的 PDF fixtures ────────
+app/tests/fixtures/paper_review_pdfs/*.pdf
+
+# ──────── Cursor / Claude 工作区 ────────
+.cursor/
+.claude/cache/
+.claude/runtime/
+.claude/settings.local.json
+
+# ──────── git worktree ────────
+.worktrees/
+
+# ──────── 本地工具链 / 大型依赖 / 第三方参考实现 ────────
+FATE/
+Archon/
+Rethlas/
+app/lean_formalization_env/
+app/data/
+tools/
+
+# ──────── 根目录调试 / 临时文件 ────────
+main.pdf
+test_paper.pdf
+test_paper_review_backend_result.md
+server_changes.patch
+start_server.bat
+test_*.js
+test_*.html
+
+# ──────── 本地计划 / 工作文档 ────────
+PR-TASK-*.md
+SOLVING_UI_DESIGN.md
+REVIEW_IMPROVEMENTS.md
+TASKS.md

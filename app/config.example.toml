@@ -1,0 +1,51 @@
+# vibe_proving 配置示例
+# 复制为 config.toml 后填写密钥，或通过环境变量 VP_CONFIG_PATH 指向你的配置文件。
+#
+#   cp config.example.toml config.toml
+#
+# 敏感字段请勿提交到 git（仓库已忽略 app/config.toml）。
+
+[llm]
+# OpenAI 兼容 Chat Completions 端点
+base_url = "https://api.openai.com/v1"
+api_key  = ""
+model    = "gpt-4o"
+timeout  = 120
+
+[theorem_search]
+base_url = "https://api.theoremsearch.com"
+timeout  = 60
+
+[latrace]
+base_url    = "http://localhost:8000"
+tenant_id   = "vibe-proving"
+timeout     = 10
+
+[app]
+log_level = "INFO"
+
+[paper_review_agent]
+grobid_url = ""
+grobid_use_public_demo = false
+grobid_public_demo_url = "https://grobidorg-grobid.hf.space"
+mathpix_base_url = "https://api.mathpix.com"
+mistral_ocr_url = ""
+
+[nanonets]
+# https://extraction-api.nanonets.com — 也可用环境变量 NANONETS_API_KEY
+api_key = ""
+max_poll_seconds = 900
+poll_interval_seconds = 2
+request_timeout_seconds = 120
+
+[mineru]
+# https://mineru.net/apiManage/docs — 也可用环境变量 MINERU_TOKEN
+token = ""
+
+[formalization_models]
+default   = "gpt-4o"
+keywords  = "gpt-4o"
+validate  = "gpt-4o"
+blueprint = "gpt-4o"
+generate  = "gpt-4o"
+repair    = "gpt-4o"

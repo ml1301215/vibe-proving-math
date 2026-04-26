@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vibe_proving — 数学推理伙伴</title>
+
+  <!--
+    UMD/CDN 加载策略：
+    1. 不在加载前 stub `module`，否则 UMD 库（marked、morphdom）会走 CommonJS
+       分支挂到 module.exports 而不是 window.X，造成 'marked is not defined'。
+    2. 但某些扩展（marked-katex-extension / marked-highlight）会先检测 module
+       再 require('marked')，所以我们在它们加载前**临时**注入 module + require
+       shim，加载后再撤回，并把 module.exports 内容反挂到 window 全局。
+  -->
+  <script>
+    window.__umd = {
+      enable: function (globalKey) {
+        window.module = { exports: {} };
+        window.exports = window.module.exports;
+        if (typeof window.require === 'undefined') {
+          window.require = function (name) {
+            var map = {
+              'marked': window.marked,
+              'katex': window.katex,
+              'highlight.js': window.hljs,
+              'highlight.js/lib/core': window.hljs
+            };
+            return map[name] || {};
+          };
+        }
+        window.__umd._target = globalKey;
+      },
+      finish: function () {
+        var key = window.__umd._target;
+        var exp = window.module && window.module.exports;
+        if (key && exp && Object.keys(exp).length > 0 && !window[key]) {
+          window[key] = exp;
+        }
+        try { delete window.module; } catch (e) { window.module = undefined; }
+        try { delete window.exports; } catch (e) { window.exports = undefined; }
+      }
+    };
+  </script>
+
+  <!-- Inter 字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <!-- KaTeX（同步加载，确保 marked-katex-extension 能拿到） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- marked 4.x：必须无 module shim，让其挂到 window.marked -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+
+  <!-- marked-katex-extension：UMD 需要 module + require -->
+  <script>window.__umd.enable('markedKatex');</script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@4.0.0/lib/index.umd.min.js"></script>
+  <script>window.__umd.finish();</script>
+
+  <!-- highlight.js：完整版（含 core+common+ext 语言注册） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css"
+        id="hljs-theme-light">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css"
+        id="hljs-theme-dark" disabled>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+
+  <!-- marked-highlight：UMD 需要 module + require -->
+  <script>window.__umd.enable('markedHighlight');</script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-highlight@2.1.1/lib/index.umd.min.js"></script>
+  <script>window.__umd.finish();</script>
+
+  <!-- morphdom：纯 UMD，无 module shim 即可挂到 window.morphdom -->
+  <script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═════════════════════════════════════════════════════════════════
+     左侧导航
+═════════════════════════════════════════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <div class="logo-mark">∑</div>
+      <div class="logo-text-group">
+        <span class="logo-text">vibe_proving</span>
+        <span class="logo-sub" data-i18n="home.tagline">数学工作者的推理伙伴</span>
+      </div>
+    </div>
+
+    <ul class="nav-list" style="margin-top:4px">
+      <li class="nav-item active" data-view="home" id="nav-playground">
+        <span class="nav-icon">⊢</span>
+        <span class="nav-label" data-i18n="nav.playground">主界面</span>
+      </li>
+      <li class="nav-item" data-action="projects" id="nav-projects">
+        <span class="nav-icon">∈</span>
+        <span class="nav-label" data-i18n="nav.projects">项目</span>
+      </li>
+    </ul>
+
+    <div class="nav-section-label" style="margin-top:18px" id="nav-history-label" data-i18n="nav.recent">近期</div>
+    <div class="nav-history" id="nav-history"></div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <ul class="nav-list">
+      <li class="nav-item" id="nav-health">
+        <span class="health-dot" id="health-dot">●</span>
+        <span class="nav-label" data-i18n="nav.service">服务状态</span>
+      </li>
+      <!-- plan F.3 (T51)：与顶栏右上角设置入口去重，保留侧栏底部仅作"服务状态"信息位 -->
+      <li class="nav-item" data-action="settings" id="nav-settings" style="display:none">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label" data-i18n="nav.settings">设置</span>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════
+     主内容区
+═════════════════════════════════════════════════════════════════ -->
+<main class="main" id="main">
+
+  <!-- 顶栏：模式 Tabs + 操作 -->
+  <header class="topbar">
+    <button class="hamburger" id="hamburger" aria-label="menu">☰</button>
+    <!-- plan E：返回主界面（初始隐藏，进入 chat 视图后由 switchView 显示） -->
+    <button class="icon-btn back-btn" id="btn-home" style="display:none"
+            data-i18n-title="topbar.homeTip" title="返回主界面" aria-label="home">←</button>
+
+    <!-- 模式 Tab 切换器 -->
+    <div class="mode-tabs" id="mode-tabs" role="tablist" aria-label="切换模式">
+      <button class="mode-tab active" role="tab" data-mode="learning" aria-selected="true">
+        <span class="mode-tab-icon">ℓ</span>
+        <span data-i18n="modes.learning">学习模式</span>
+      </button>
+      <button class="mode-tab" role="tab" data-mode="solving" aria-selected="false">
+        <span class="mode-tab-icon">∂</span>
+        <span data-i18n="modes.solving">问题求解</span>
+      </button>
+      <button class="mode-tab" role="tab" data-mode="reviewing" aria-selected="false">
+        <span class="mode-tab-icon">¶</span>
+        <span data-i18n="modes.reviewing">证明审查</span>
+      </button>
+      <button class="mode-tab" role="tab" data-mode="searching" aria-selected="false">
+        <span class="mode-tab-icon">∇</span>
+        <span data-i18n="modes.searching">定理检索</span>
+      </button>
+      <button class="mode-tab" role="tab" data-mode="formalization" aria-selected="false">
+        <span class="mode-tab-icon">⊩</span>
+        <span data-i18n="modes.formalization">形式化证明</span>
+      </button>
+      <span class="mode-tab-indicator" id="mode-tab-indicator"></span>
+    </div>
+
+    <span class="chat-title" id="chat-title" data-i18n="topbar.title">临时对话</span>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-pin" style="display:none"
+              data-i18n-title="topbar.pinTip" title="保存到项目">⊙</button>
+      <button class="icon-btn topbar-docs-btn" id="btn-docs" data-i18n-title="docs.btnTitle" title="使用指南" aria-label="guide">?</button>
+      <button class="lang-toggle-btn" id="btn-lang-topbar" aria-label="Switch language" title="Switch language">中/EN</button>
+      <button class="icon-btn" id="btn-panel-toggle"
+              data-i18n-title="topbar.panelTip" title="设置" aria-label="settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- 欢迎主页 -->
+  <section class="home-view" id="home-view">
+    <div class="home-hero">
+      <h1 class="home-title" data-i18n="home.title">vibe_proving</h1>
+      <p class="home-tagline" data-i18n="home.tagline">数学工作者的推理伙伴</p>
+    </div>
+
+    <!-- 功能卡片 -->
+    <div class="cards-grid" id="cards-grid">
+      <button class="feature-card" data-mode="learning" tabindex="0"
+              data-i18n-aria-label="cards.learning.title" aria-label="学习模式">
+        <div class="card-glyph learning-glyph">ℓ</div>
+        <div class="card-title" data-i18n="cards.learning.title">学习模式</div>
+        <div class="card-desc" data-i18n="cards.learning.desc">为数学命题生成分步教学讲解</div>
+        <span class="card-arrow">→</span>
+      </button>
+
+      <button class="feature-card" data-mode="solving" tabindex="0"
+              data-i18n-aria-label="cards.solving.title" aria-label="问题求解">
+        <div class="card-glyph solving-glyph">∂</div>
+        <div class="card-title" data-i18n="cards.solving.title">问题求解</div>
+        <div class="card-desc" data-i18n="cards.solving.desc">GVR 循环证明，置信度评估与主动拒绝</div>
+        <span class="card-arrow">→</span>
+      </button>
+
+      <button class="feature-card" data-mode="reviewing" tabindex="0"
+              data-i18n-aria-label="cards.reviewing.title" aria-label="证明审查">
+        <div class="card-glyph reviewing-glyph">¶</div>
+        <div class="card-title" data-i18n="cards.reviewing.title">证明审查</div>
+        <div class="card-desc" data-i18n="cards.reviewing.desc">粘贴或上传证明文本，AI 审查逻辑漏洞与引用</div>
+        <span class="card-arrow">→</span>
+      </button>
+
+      <button class="feature-card" data-mode="searching" tabindex="0"
+              data-i18n-aria-label="cards.searching.title" aria-label="定理检索">
+        <div class="card-glyph searching-glyph">∇</div>
+        <div class="card-title" data-i18n="cards.searching.title">定理检索</div>
+        <div class="card-desc" data-i18n="cards.searching.desc">直接搜索 Lean 4 定理库，获取形式化声明</div>
+        <span class="card-arrow">→</span>
+      </button>
+
+      <button class="feature-card" data-action="open-projects" tabindex="0"
+              data-i18n-aria-label="cards.projects.title" aria-label="项目管理">
+        <div class="card-glyph projects-glyph">§</div>
+        <div class="card-title" data-i18n="cards.projects.title">项目管理</div>
+        <div class="card-desc" data-i18n="cards.projects.desc">保存、组织并随时回到你的研究项目</div>
+        <span class="card-arrow">→</span>
+      </button>
+
+      <button class="feature-card card-beta" data-mode="formalization" tabindex="0"
+              data-i18n-aria-label="cards.formalization.title" aria-label="形式化证明">
+        <span class="card-beta-chip">Beta</span>
+        <div class="card-glyph formalization-glyph">⊩</div>
+        <div class="card-title" data-i18n="cards.formalization.title">形式化证明</div>
+        <div class="card-desc" data-i18n="cards.formalization.desc">将数学命题转化为 Lean 4 代码：搜索 mathlib4 · 自动形式化 · 本地编译验证</div>
+        <span class="card-arrow">→</span>
+      </button>
+    </div>
+
+    <!-- 示例提示词 -->
+    <div class="example-prompts" id="example-prompts">
+      <div class="example-prompts-title" data-i18n="home.examples">示例提示词</div>
+      <div class="prompt-chips" id="prompt-chips"></div>
+    </div>
+
+  </section>
+
+  <!-- 对话页 -->
+  <section class="chat-view" id="chat-view" style="display:none" aria-live="polite">
+    <div class="chat-view-container" id="chat-container"></div>
+  </section>
+
+  <!-- 底部输入栏 -->
+  <div class="input-bar" id="input-bar">
+    <div class="input-project-badge" id="project-badge" style="display:none">
+      <span class="badge-dot">◆</span>
+      <span id="project-badge-name">default</span>
+    </div>
+
+    <!-- DeepSeek 风格：附件 chips（仅 reviewing 模式可见） -->
+    <div class="attachment-chips" id="attachment-chips" style="display:none"></div>
+
+    <div class="textarea-row">
+      <button class="attach-btn" id="attach-btn" type="button" style="display:none"
+              data-i18n-title="input.attachTip" title="上传证明文件 (.tex / .txt / .md)" aria-label="upload">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path fill="currentColor" d="M16.5 6.5L9 14a3 3 0 0 0 4.24 4.24l8.49-8.49a5 5 0 0 0-7.07-7.07L5.18 11.18a7 7 0 0 0 9.9 9.9l7.07-7.07"/>
+        </svg>
+      </button>
+      <textarea
+        id="input-textarea"
+        class="input-textarea"
+        rows="1"
+        data-i18n-placeholder="input.placeholder"
+        placeholder="输入数学命题..."
+        data-i18n-aria-label="input.aria"
+        aria-label="输入数学命题"
+        autocomplete="off"
+        spellcheck="false"
+      ></textarea>
+      <!-- LaTeX 生成开关，仅求解模式显示，位于发送按钮左侧 -->
+      <button class="toolbar-latex-btn" id="toolbar-latex-btn" type="button"
+              title="完成后生成 LaTeX 源码" style="display:none" data-active="false" aria-pressed="false">
+        <span class="toolbar-latex-icon">{ }</span>
+      </button>
+      <button class="send-btn" id="send-btn"
+              data-i18n-aria-label="input.sendAria" aria-label="发送"
+              data-i18n-tooltip="input.sendTip" data-tooltip="发送 (↵)">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path fill="currentColor" d="M5 12l14-7-7 14-2-5-5-2z"/>
+        </svg>
+      </button>
+    </div>
+
+    <input type="file" id="proof-file-input" accept=".pdf,.tex,.txt,.md,.mmd"
+           multiple style="display:none">
+
+    <div class="chip-row">
+      <!-- 模式 chip（保留供底部快速切换；与顶部 tab 同步） -->
+      <div class="chip-wrap" id="mode-chip-wrap">
+        <button class="chip" id="mode-chip" role="combobox"
+                aria-haspopup="listbox" aria-expanded="false">
+          <span class="chip-icon">ℓ</span>
+          <span id="mode-chip-label" data-i18n="modes.learning">学习模式</span>
+          <span class="chip-arrow">▾</span>
+        </button>
+        <ul class="chip-dropdown" id="mode-dropdown" role="listbox" data-i18n-aria-label="modes.aria" aria-label="选择模式">
+          <li class="chip-option" role="option" data-value="learning"
+              aria-selected="true">
+            <span class="chip-option-icon">ℓ</span>
+            <span data-i18n="modes.learning">学习模式</span>
+          </li>
+          <li class="chip-option" role="option" data-value="solving">
+            <span class="chip-option-icon">∂</span>
+            <span data-i18n="modes.solving">问题求解</span>
+          </li>
+          <li class="chip-option" role="option" data-value="reviewing">
+            <span class="chip-option-icon">¶</span>
+            <span data-i18n="modes.reviewing">证明审查</span>
+          </li>
+          <li class="chip-option" role="option" data-value="searching">
+            <span class="chip-option-icon">∇</span>
+            <span data-i18n="modes.searching">定理检索</span>
+          </li>
+          <li class="chip-option" role="option" data-value="formalization">
+            <span class="chip-option-icon">⊩</span>
+            <span data-i18n="modes.formalization">形式化证明</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 模型 chip -->
+      <div class="chip-wrap" id="model-chip-wrap">
+        <button class="chip" id="model-chip" role="combobox"
+                aria-haspopup="listbox" aria-expanded="false">
+          <span id="model-chip-label">Gemini 2.5 Flash</span>
+          <span class="chip-arrow">▾</span>
+        </button>
+        <ul class="chip-dropdown" id="model-dropdown" role="listbox" data-i18n-aria-label="models.aria" aria-label="选择模型">
+          <li class="chip-option" role="option" data-value="gemini-2.5-flash" aria-selected="true"
+              data-tier-zh="快速" data-tier-en="Fast"
+              data-desc-zh="谷歌最快推理模型，响应迅速，适合日常学习问答与快速证明验证。"
+              data-desc-en="Google's fastest reasoning model. Ideal for everyday learning and quick proof verification."
+              data-note-zh="推荐用于学习模式与定理检索。" data-note-en="Best for Learning and Search modes.">
+            <span class="chip-opt-name">Gemini 2.5 Flash</span><span class="chip-tier">快速</span>
+          </li>
+          <li class="chip-option" role="option" data-value="gemini-2.5-pro"
+              data-tier-zh="强力" data-tier-en="Pro"
+              data-desc-zh="谷歌旗舰推理模型，长上下文处理能力强，适合复杂数学证明与多轮研究。"
+              data-desc-en="Google's flagship reasoning model with long context, ideal for complex proofs and multi-turn research."
+              data-note-zh="推荐用于研究级问题求解。" data-note-en="Best for research-level problem solving.">
+            <span class="chip-opt-name">Gemini 2.5 Pro</span><span class="chip-tier">强力</span>
+          </li>
+          <li class="chip-option" role="option" data-value="gemini-3.1-pro-preview"
+              data-tier-zh="前沿" data-tier-en="Preview"
+              data-desc-zh="谷歌最新一代预览版，前沿能力抢先体验，适合探索最新模型性能。"
+              data-desc-en="Google's next-generation preview model for exploring cutting-edge capabilities."
+              data-note-zh="预览版，稳定性仍在优化中。" data-note-en="Preview release; stability still being refined.">
+            <span class="chip-opt-name">Gemini 3.1 Pro</span><span class="chip-tier">前沿</span>
+          </li>
+          <li class="chip-option" role="option" data-value="gpt-5.4"
+              data-tier-zh="均衡" data-tier-en="Balanced"
+              data-desc-zh="OpenAI 新一代高能力模型，数学推理与自然语言理解均衡出色。"
+              data-desc-en="OpenAI's new high-capability model, excelling at both mathematical reasoning and natural language."
+              data-note-zh="综合能力强，适合证明审查。" data-note-en="Well-rounded; great for proof review.">
+            <span class="chip-opt-name">GPT-5.4</span><span class="chip-tier">均衡</span>
+          </li>
+          <li class="chip-option" role="option" data-value="gpt-5.3-codex"
+              data-tier-zh="形式化" data-tier-en="Codex"
+              data-desc-zh="Codex 强化代码与形式化推理，适合 Lean 证明生成与迭代修复。"
+              data-desc-en="Codex-optimized for code and formal reasoning, ideal for Lean generation and repair."
+              data-note-zh="推荐用于形式化证明模式。" data-note-en="Recommended for Formalization mode.">
+            <span class="chip-opt-name">GPT 5.3 Codex</span><span class="chip-tier">形式化</span>
+          </li>
+          <li class="chip-option" role="option" data-value="gpt-5"
+              data-tier-zh="旗舰" data-tier-en="Flagship"
+              data-desc-zh="OpenAI 旗舰模型，顶级推理与形式化能力，适合最具挑战性的数学问题。"
+              data-desc-en="OpenAI's flagship model with top-tier reasoning and formalization capabilities."
+              data-note-zh="适合最高难度数学研究问题。" data-note-en="Best for the most challenging research problems.">
+            <span class="chip-opt-name">GPT-5</span><span class="chip-tier">旗舰</span>
+          </li>
+          <li class="chip-option" role="option" data-value="claude-sonnet-4-6"
+              data-tier-zh="均衡" data-tier-en="Balanced"
+              data-desc-zh="Anthropic 高效推理模型，数学格式规范，证明步骤清晰，适合学习与审查。"
+              data-desc-en="Anthropic's high-efficiency model with clean math formatting, ideal for learning and proof review."
+              data-note-zh="推荐用于学习模式与证明审查。" data-note-en="Recommended for Learning and Proof Review modes.">
+            <span class="chip-opt-name">Claude Sonnet 4.6</span><span class="chip-tier">均衡</span>
+          </li>
+          <li class="chip-option" role="option" data-value="claude-opus-4-7"
+              data-tier-zh="旗舰" data-tier-en="Flagship"
+              data-desc-zh="Anthropic 旗舰模型，顶级数学推理与形式化能力，适合研究级证明。"
+              data-desc-en="Anthropic's flagship model with top-tier mathematical reasoning and formalization."
+              data-note-zh="适合最高难度数学研究。" data-note-en="Best for the most rigorous mathematical research.">
+            <span class="chip-opt-name">Claude Opus 4.7</span><span class="chip-tier">旗舰</span>
+          </li>
+          <li class="chip-option" role="option" data-value="o4-mini"
+              data-tier-zh="快速" data-tier-en="Fast"
+              data-desc-zh="OpenAI 推理模型轻量版，STEM 问题高性价比之选，速度与推理兼顾。"
+              data-desc-en="OpenAI's lightweight reasoning model — fast and cost-effective for STEM problems."
+              data-note-zh="速度与推理能力的最佳平衡。" data-note-en="Best balance of speed and reasoning depth.">
+            <span class="chip-opt-name">o4-mini</span><span class="chip-tier">快速</span>
+          </li>
+          <li class="chip-option" role="option" data-value="kimi-k2.6"
+              data-tier-zh="长文本" data-tier-en="Long Ctx"
+              data-desc-zh="月之暗面大上下文模型，擅长超长数学文档分析，适合长篇证明阅读。"
+              data-desc-en="Moonshot AI's long-context model, excellent for analyzing lengthy mathematical documents."
+              data-note-zh="擅长超长上下文的文档理解。" data-note-en="Excellent for very long document comprehension.">
+            <span class="chip-opt-name">Kimi K2.6</span><span class="chip-tier">长文本</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="chip-spacer"></div>
+
+      <button class="icon-btn stop-btn" id="stop-btn" style="display:none"
+              data-i18n-aria-label="input.stopAria" aria-label="停止生成"
+              data-i18n="input.stop">■ 停止</button>
+    </div>
+  </div>
+</main>
+
+<!-- ═════════════════════════════════════════════════════════════════
+     右侧设置面板
+═════════════════════════════════════════════════════════════════ -->
+<aside class="settings-panel" id="settings-panel">
+  <div class="panel-header">
+    <span class="panel-title" data-i18n="panel.title">运行设置</span>
+    <button class="icon-btn" id="panel-close" data-i18n-title="panel.close" title="关闭">✕</button>
+  </div>
+
+  <!-- plan H：外观设置（合并原顶栏 theme/lang 按钮） -->
+  <div class="panel-section">
+    <div class="panel-section-title" data-i18n="panel.appearance">外观</div>
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.theme">主题</label>
+      <button class="theme-btn" id="btn-theme"
+              data-i18n-title="topbar.themeTip" title="切换主题">☀ / ☾</button>
+    </div>
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.language">语言</label>
+      <!-- plan F.3 (T51)：分段切换器，与单色文字按钮相比更直观地展示当前选中语言 -->
+      <div class="seg-toggle" id="lang-seg" role="group" aria-label="Language">
+        <button type="button" class="seg-opt active" data-lang="zh" aria-pressed="true">中文</button>
+        <button type="button" class="seg-opt"        data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section" id="section-level">
+    <div class="panel-section-title" data-i18n="panel.level">学习层次</div>
+    <div class="radio-group">
+      <label class="radio-label">
+        <input type="radio" name="level" value="undergraduate" checked>
+        <span data-i18n="panel.undergraduate">本科</span>
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="level" value="graduate">
+        <span data-i18n="panel.graduate">研究生</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-section-title" data-i18n="panel.params">参数</div>
+
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.stream">流式输出</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-stream" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="param-row" id="param-max-theorems" style="display:none">
+      <label class="param-label" data-i18n="panel.maxTheorems">最大定理数</label>
+      <input type="number" class="param-input" id="input-max-theorems"
+             value="5" min="1" max="20" style="width:60px">
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-section-title" data-i18n="panel.features">功能</div>
+
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.memory">LATRACE 记忆</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-memory" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.extendedThinking" title="Extended Thinking: 模型会展示完整推理过程">深度思考</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-extended-thinking">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.citation">引用核查</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-citation" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- 证明审查选项（仅 reviewing 模式显示） -->
+    <div class="param-row" id="param-check-logic" style="display:none">
+      <label class="param-label" data-i18n="panel.checkLogic">审查逻辑漏洞</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-check-logic" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="param-row" id="param-check-citations" style="display:none">
+      <label class="param-label" data-i18n="panel.checkCitations">核查定理引用</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-check-citations" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="param-row" id="param-check-symbols" style="display:none">
+      <label class="param-label" data-i18n="panel.checkSymbols">检查符号一致性</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-check-symbols" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="panel-section panel-status">
+    <div class="panel-section-title" data-i18n="panel.status">服务状态</div>
+    <div class="status-row">
+      <span class="status-label">API</span>
+      <span class="status-badge" id="status-api">--</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">LATRACE</span>
+      <span class="status-badge" id="status-latrace">--</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">TheoremSearch</span>
+      <span class="status-badge" id="status-ts">--</span>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-section-title" data-i18n="panel.shortcuts">快捷键</div>
+    <div class="shortcuts-list">
+      <div><kbd>↵</kbd> <span data-i18n="panel.skSend">发送</span></div>
+      <div><kbd>Shift</kbd>+<kbd>↵</kbd> <span data-i18n="panel.skNewline">换行</span></div>
+      <div><kbd>Esc</kbd> <span data-i18n="panel.skStop">停止生成</span></div>
+      <div><kbd>Ctrl</kbd>+<kbd>/</kbd> <span data-i18n="panel.skFocus">聚焦输入框</span></div>
+      <div><kbd>Ctrl</kbd>+<kbd>1-4</kbd> <span data-i18n="panel.skMode">切换模式</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- 项目管理模态框（双栏：左项目列表 + 右详情/记忆面板） -->
+<div class="modal-overlay" id="projects-modal" style="display:none"
+     role="dialog" aria-modal="true" aria-labelledby="modal-proj-title">
+  <div class="modal modal-wide">
+    <!-- 左栏：项目列表 -->
+    <div class="proj-sidebar">
+      <div class="proj-sidebar-header">
+        <span class="modal-title" id="modal-proj-title" data-i18n="modal.projects.title">Projects</span>
+        <button class="icon-btn" id="modal-close">✕</button>
+      </div>
+      <div class="proj-list" id="project-list"></div>
+      <button class="proj-new-btn" id="btn-show-create-project">+ <span data-i18n="modal.projects.new">New Project</span></button>
+    </div>
+
+    <!-- 右栏：详情 / 新建表单 -->
+    <div class="proj-detail" id="proj-detail">
+      <!-- 默认空态 -->
+      <div class="proj-detail-empty" id="proj-detail-empty">
+        <div class="proj-detail-empty-icon">§</div>
+        <p data-i18n="modal.projects.selectHint">Select a project to view details</p>
+      </div>
+
+      <!-- 项目详情面板（隐藏时 display:none） -->
+      <div class="proj-detail-panel" id="proj-detail-panel" style="display:none">
+        <div class="proj-detail-topbar">
+          <div style="flex:1;min-width:0">
+            <div class="proj-detail-name" id="proj-detail-name"></div>
+            <div class="proj-detail-desc" id="proj-detail-desc"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+            <span class="proj-active-indicator" id="proj-active-indicator" style="display:none">
+              <span style="color:var(--green);font-size:11px">● </span><span data-i18n="modal.projects.activeLabel">Active</span>
+            </span>
+            <button class="proj-use-btn" id="btn-use-project" data-i18n="modal.projects.use">Use</button>
+          </div>
+        </div>
+
+        <!-- 知识状态 -->
+        <div class="proj-section">
+          <div class="proj-section-header">
+            <span class="proj-section-title" data-i18n="modal.projects.concepts">Concepts</span>
+            <button class="proj-add-btn" id="btn-add-concept">+</button>
+          </div>
+          <div class="concept-list" id="concept-list"></div>
+        </div>
+
+        <!-- 知识库文档 -->
+        <div class="proj-section kb-section" id="kb-section">
+          <div class="proj-section-header">
+            <span class="proj-section-title" data-i18n="modal.projects.kb">Knowledge Base</span>
+            <div class="kb-header-actions">
+              <label class="kb-constrain-toggle" title="Constrain answers to knowledge base">
+                <input type="checkbox" id="kb-constrain-toggle">
+                <span class="kb-constrain-label" data-i18n="modal.projects.kbConstrain">KB only</span>
+              </label>
+              <button class="proj-add-btn" id="btn-upload-kb" title="Upload PDF / LaTeX / TXT / MD">↑</button>
+            </div>
+          </div>
+          <!-- 拖拽上传区域 -->
+          <div class="kb-drop-zone" id="kb-drop-zone">
+            <div class="kb-drop-inner">
+              <span class="kb-drop-icon">⊕</span>
+              <span class="kb-drop-text" data-i18n="modal.projects.kbDropHint">Drop files here or click ↑</span>
+              <span class="kb-drop-sub" data-i18n="modal.projects.kbDropSub">PDF · LaTeX · TXT · MD · up to 20 MB</span>
+            </div>
+          </div>
+          <div class="kb-doc-list" id="kb-doc-list"></div>
+          <input type="file" id="kb-file-input" accept=".pdf,.txt,.md,.mmd,.tex" multiple style="display:none">
+        </div>
+
+        <!-- 开放问题 -->
+        <div class="proj-section">
+          <div class="proj-section-header">
+            <span class="proj-section-title" data-i18n="modal.projects.openQ">Open Questions</span>
+            <button class="proj-add-btn" id="btn-add-question">+</button>
+          </div>
+          <div class="open-q-list" id="open-q-list"></div>
+        </div>
+
+        <!-- 会话历史摘要 -->
+        <div class="proj-section">
+          <div class="proj-section-title" data-i18n="modal.projects.sessions">Sessions</div>
+          <div class="proj-session-list" id="proj-session-list"></div>
+        </div>
+      </div>
+
+      <!-- 新建项目表单（隐藏时 display:none） -->
+      <div class="proj-create-form" id="proj-create-form" style="display:none">
+        <div class="proj-section-title" data-i18n="modal.projects.new">New Project</div>
+        <input type="text" class="param-input" id="new-project-id"
+               placeholder="project-id (e.g. rudin-analysis)"
+               style="width:100%;margin-bottom:8px">
+        <input type="text" class="param-input" id="new-project-name"
+               placeholder="Display name"
+               data-i18n-placeholder="modal.projects.namePlaceholder"
+               style="width:100%;margin-bottom:8px">
+        <textarea class="param-input" id="new-project-desc"
+                  placeholder="Description (optional)"
+                  data-i18n-placeholder="modal.projects.descPlaceholder"
+                  rows="3" style="width:100%;margin-bottom:12px;resize:none"></textarea>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" id="btn-create-project" data-i18n="modal.projects.create">Create</button>
+          <button class="btn-secondary" id="btn-cancel-create" data-i18n="modal.projects.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 概念编辑弹窗 -->
+<div class="mini-modal-overlay" id="concept-modal" style="display:none">
+  <div class="mini-modal">
+    <div class="mini-modal-title" id="concept-modal-title">Add Concept</div>
+    <input type="text" class="param-input" id="concept-name-input" placeholder="Concept name" style="width:100%;margin-bottom:8px">
+    <select class="param-input" id="concept-state-input" style="width:100%;margin-bottom:8px">
+      <option value="unseen">Unseen</option>
+      <option value="confused">Confused</option>
+      <option value="understood">Understood</option>
+      <option value="mastered">Mastered</option>
+    </select>
+    <textarea class="param-input" id="concept-note-input" placeholder="Notes (optional)" rows="2" style="width:100%;margin-bottom:12px;resize:none"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" id="btn-save-concept">Save</button>
+      <button class="btn-secondary" id="btn-cancel-concept">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- 问题编辑弹窗 -->
+<div class="mini-modal-overlay" id="question-modal" style="display:none">
+  <div class="mini-modal">
+    <div class="mini-modal-title">Add Question</div>
+    <textarea class="param-input" id="question-text-input" placeholder="Question..." rows="3" style="width:100%;margin-bottom:8px;resize:none"></textarea>
+    <select class="param-input" id="question-status-input" style="width:100%;margin-bottom:12px">
+      <option value="open">Open</option>
+      <option value="answered">Answered</option>
+    </select>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" id="btn-save-question">Save</button>
+      <button class="btn-secondary" id="btn-cancel-question">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- 产品文档模态框 -->
+<div class="modal-overlay" id="docs-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal docs-modal">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="docs.title">vibe_proving — 使用指南</span>
+      <button class="icon-btn" id="docs-modal-close">✕</button>
+    </div>
+    <div class="modal-body docs-body" id="docs-body">
+    </div>
+  </div>
+</div>
+
+<div class="model-info-card" id="model-info-card" aria-hidden="true">
+  <div class="mic-title">
+    <span class="mic-name"></span>
+    <span class="mic-tier-badge"></span>
+  </div>
+  <div class="mic-desc"></div>
+  <div class="mic-note"></div>
+</div>
+
+<script src="app.js?v=f104"></script>
+</body>
+</html>
