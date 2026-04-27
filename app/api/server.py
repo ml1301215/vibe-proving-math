@@ -26,7 +26,7 @@ from typing import Optional, AsyncIterator
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -61,6 +61,10 @@ app.add_middleware(
 _ui_dir = Path(__file__).parent.parent / "ui"
 if _ui_dir.exists():
     app.mount("/ui", StaticFiles(directory=str(_ui_dir), html=True), name="ui")
+
+    @app.get("/", include_in_schema=False)
+    async def _root_redirect_to_ui():
+        return RedirectResponse(url="/ui/", status_code=307)
 
 # ── Pydantic 模型 ────────────────────────────────────────────────────────────
 
