@@ -198,16 +198,25 @@ async def _stream_stripped(
     max_tokens: int,
     heading: str,
 ) -> AsyncIterator[str]:
-    """流式调用 LLM，并剥掉开头的重复 ## 标题行。"""
+    """流式调用 LLM，并剥掉开头的重复 ## 标题行。
+
+    改进：积累 pending 直到足够判断标题，避免跨 chunk 边界时标题剥离失效。
+    """
     pending = ""
     leading_stripped = False
     async for chunk in stream_chat(user_msg, system=system, model=model, max_tokens=max_tokens):
         pending += chunk
-        if not leading_stripped and (len(pending) > 80 or '\n\n' in pending):
-            pending = _strip_leading_heading(pending, heading).lstrip('\n')
-            leading_stripped = True
-        yield pending
-        pending = ""
+        if not leading_stripped:
+            # 等到缓冲区足够（>80字符 或 出现段落分隔 \n\n）再做标题剥离
+            if len(pending) > 80 or '\n\n' in pending:
+                pending = _strip_leading_heading(pending, heading).lstrip('\n')
+                leading_stripped = True
+                yield pending
+                pending = ""
+            # 不够时继续积累，不 yield
+        else:
+            yield pending
+            pending = ""
     if pending:
         if not leading_stripped:
             pending = _strip_leading_heading(pending, heading).lstrip('\n')

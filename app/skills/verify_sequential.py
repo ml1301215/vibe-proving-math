@@ -383,13 +383,15 @@ async def verify_sequential(
         ))
         data["overall"] = "has_gaps"
         data["summary"] = data.get("summary") or "No step-level verification trace was returned."
+        data["goal_reached"] = False  # 无步骤跟踪时不能认为目标已达成
 
     goal_reached_raw = data.get("goal_reached", True)
     # 兼容布尔值和字符串 "false"/"true"（防止 LLM 返回字符串而非布尔）
     if isinstance(goal_reached_raw, bool):
         goal_reached = goal_reached_raw
     elif isinstance(goal_reached_raw, str):
-        goal_reached = goal_reached_raw.strip().lower() not in ("false", "0", "no")
+        # 空字符串、"false"、"0"、"no" 均视为未达成
+        goal_reached = bool(goal_reached_raw.strip()) and goal_reached_raw.strip().lower() not in ("false", "0", "no")
     else:
         goal_reached = bool(goal_reached_raw)
     goal_reached_reason = data.get("goal_reached_reason", "")
