@@ -58,6 +58,14 @@ def _clean_latex_noise(text: str) -> str:
     return out
 
 
+def _safe_float(v, default: float = 0.0) -> float:
+    """安全将值转为 float，处理 None / 非数字字符串（如 "N/A"）。"""
+    try:
+        return float(v) if v is not None else default
+    except (ValueError, TypeError):
+        return default
+
+
 @dataclass
 class TheoremMatch:
     name: str
@@ -100,11 +108,11 @@ async def search_theorems(
             name=_clean_latex_noise(r.get("name", "")),
             body=_clean_latex_noise(r.get("body", "")),
             slogan=_clean_latex_noise(r.get("slogan", "")),
-            similarity=float(r.get("similarity") or 0),
-            score=float(r.get("score") or 0),
+            similarity=_safe_float(r.get("similarity")),
+            score=_safe_float(r.get("score")),
             link=r.get("link") or paper.get("link", ""),
             paper_title=_clean_latex_noise(paper.get("title", "")),
-            paper_authors=paper.get("authors") or [],
+            paper_authors=paper.get("authors") if isinstance(paper.get("authors"), list) else [],
         )
         results.append(tm)
 

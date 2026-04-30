@@ -880,11 +880,11 @@ def _determine_verdict(issues: list[IssueReport]) -> str:
     """规范化为 3 值枚举：Correct / Partial / Incorrect。
 
     - 无 issue → Correct
-    - 仅有 gap/citation_not_found → Partial
+    - 仅有 gap/citation_not_found/verification_error → Partial（验证失败不能当 Correct）
     - 有 critical_error 或 parse_failed → Incorrect
     """
     critical = sum(1 for i in issues if i.issue_type in ("critical_error", "parse_failed"))
-    gaps = sum(1 for i in issues if i.issue_type in ("gap", "citation_not_found"))
+    gaps = sum(1 for i in issues if i.issue_type in ("gap", "citation_not_found", "verification_error"))
     if critical > 0:
         return "Incorrect"
     if gaps > 0:

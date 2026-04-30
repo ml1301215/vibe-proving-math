@@ -928,7 +928,7 @@ async def health():
     async def _check_ts() -> str:
         # 如果缓存里已有条目，说明近期调用成功过 → 直接报 ok
         stats = _ts_cache_stats()
-        if stats.get("size", 0) > 0:
+        if stats.get("total", 0) > 0:  # total 是 get_cache_stats() 返回的实际键名
             return "ok"
         try:
             ts_base = ts_cfg()["base_url"]

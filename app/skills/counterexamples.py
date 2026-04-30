@@ -21,6 +21,13 @@ from typing import Optional
 
 from core.llm import chat_json, lang_sys_suffix
 
+
+def _safe_float(v, default: float = 0.0) -> float:
+    try:
+        return float(v) if v is not None else default
+    except (ValueError, TypeError):
+        return default
+
 _CE_SYSTEM = """You are a mathematical counterexample expert.
 Your task is to try to construct a counterexample to the given mathematical claim.
 
@@ -87,9 +94,9 @@ async def find_counterexample(
         return CounterexampleResult(found=False, note=f"调用失败: {e}")
 
     return CounterexampleResult(
-        found=bool(data.get("found", False)),
-        counterexample=data.get("counterexample", ""),
-        explanation=data.get("explanation", ""),
-        confidence=float(data.get("confidence", 0.0)),
-        note=data.get("note", ""),
+        found=bool(data.get("found", False)) if isinstance(data, dict) else False,
+        counterexample=data.get("counterexample", "") if isinstance(data, dict) else "",
+        explanation=data.get("explanation", "") if isinstance(data, dict) else "",
+        confidence=_safe_float(data.get("confidence")) if isinstance(data, dict) else 0.0,
+        note=data.get("note", "") if isinstance(data, dict) else "",
     )

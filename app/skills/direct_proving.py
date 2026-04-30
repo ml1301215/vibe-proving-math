@@ -23,6 +23,22 @@ from typing import Optional
 from core.llm import chat_json, chat, lang_sys_suffix
 from skills.search_theorems import search_theorems, format_theorems_for_prompt, TheoremMatch
 
+
+def _safe_float(v, default: float = 0.0) -> float:
+    try:
+        return float(v) if v is not None else default
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_list(v) -> list:
+    """确保 v 是列表；若为字符串则包装为单元素列表；否则返回 []。"""
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str) and v.strip():
+        return [v]
+    return []
+
 _DIRECT_PROVING_SYSTEM = """You are an expert mathematician and formal proof assistant.
 Your task is to attempt a direct proof of the given mathematical statement.
 
@@ -101,11 +117,11 @@ async def direct_proving(
         )
 
     return ProofResult(
-        proof=data.get("proof", ""),
-        confidence=float(data.get("confidence", 0.0)),
-        status=data.get("status", "failed"),
-        gaps=data.get("gaps", []),
-        references=data.get("references", []),
+        proof=data.get("proof", "") if isinstance(data, dict) else "",
+        confidence=_safe_float(data.get("confidence") if isinstance(data, dict) else None),
+        status=data.get("status", "failed") if isinstance(data, dict) else "failed",
+        gaps=_safe_list(data.get("gaps") if isinstance(data, dict) else None),
+        references=_safe_list(data.get("references") if isinstance(data, dict) else None),
         theorem_matches=references,
     )
 
