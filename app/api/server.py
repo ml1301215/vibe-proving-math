@@ -668,7 +668,7 @@ async def review_stream(req: ReviewRequest):
 @app.post("/review_pdf_stream")
 async def review_pdf_stream(
     file: UploadFile = File(...),
-    max_theorems: int = Form(8),
+    max_theorems: int = Form(8, ge=1, le=50),
     user_id: str = Form("anonymous"),
     lang: Optional[str] = Form(None),
     mode: str = Form("pipeline"),
@@ -695,6 +695,7 @@ async def review_pdf_stream(
     # 文件大小限制（在 SSE 流开始前校验，保证返回正确 HTTP 状态码）
     _MAX_PDF_BYTES = 50 * 1024 * 1024   # 50 MB
     _MAX_TEXT_BYTES = 1 * 1024 * 1024   # 1 MB
+    _MAX_IMAGE_BYTES = 20 * 1024 * 1024  # 20 MB
     text_exts = {".tex", ".txt", ".md", ".mmd"}
     image_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
     content_type = (file.content_type or "").lower()
@@ -710,6 +711,8 @@ async def review_pdf_stream(
         raise HTTPException(status_code=413, detail=f"PDF 文件超过 50 MB 限制")
     if is_text and not is_pdf and len(content) > _MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail=f"文本文件超过 1 MB 限制")
+    if is_image and not is_pdf and len(content) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail=f"图片文件超过 20 MB 限制")
 
     from modes.research.reviewer import review_text, review_paper_images
     from modes.research.section_reviewer import run_pdf_nanonets_section_review

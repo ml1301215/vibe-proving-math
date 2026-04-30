@@ -311,7 +311,8 @@ async def stream_chat_with_reasoning(
                 yield ("reasoning", r)
             if c:
                 yield ("content", c)
-    except Exception:
+    except Exception as _e:
+        logger.debug("stream_chat_with_reasoning: stream interrupted (%s)", _e)
         return  # 连接中断或服务端断流，停止迭代即可
 
 

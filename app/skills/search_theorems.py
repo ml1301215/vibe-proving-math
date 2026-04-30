@@ -104,6 +104,8 @@ async def search_theorems(
 
     for r in raw:
         paper = r.get("paper") or {}
+        if not isinstance(paper, dict):
+            paper = {}
         tm = TheoremMatch(
             name=_clean_latex_noise(r.get("name", "")),
             body=_clean_latex_noise(r.get("body", "")),

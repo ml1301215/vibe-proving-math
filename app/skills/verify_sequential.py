@@ -345,6 +345,8 @@ async def verify_sequential(
     try:
         raw = await chat_json(user_msg, system=_VERIFY_SYSTEM, model=model, schema=_VERIFY_SCHEMA)
         data = json.loads(raw) if isinstance(raw, str) else raw
+        if not isinstance(data, dict):
+            data = {}  # chat_json 返回非 dict（如 list/None）时，安全降级为空字典
     except Exception as exc:
         logger.warning("verify_sequential LLM call failed: %s", exc)
         return VerificationResult(
@@ -361,7 +363,11 @@ async def verify_sequential(
         if not isinstance(s, dict):
             continue  # 跳过 null 或非 dict 元素，防止 AttributeError
         verdict = s.get("verdict", "gap")
-        step_num = s.get("step_num", len(steps) + 1)
+        _raw_step_num = s.get("step_num", len(steps) + 1)
+        try:
+            step_num = int(_raw_step_num)
+        except (ValueError, TypeError):
+            step_num = len(steps) + 1  # 非整数类型安全降级
         sv = StepVerdict(
             step_num=step_num,
             text=s.get("text", ""),

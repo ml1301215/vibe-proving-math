@@ -163,7 +163,9 @@ async def prerequisite_map(
             model=model,
         )
         raw_data = json.loads(raw) if isinstance(raw, str) else raw
-        raw_items = (raw_data.get("prerequisites") or [])[:7]   # 硬上限，防止 LLM 失控
+        if not isinstance(raw_data, dict):
+            raw_data = {}
+        raw_items = [(it if isinstance(it, dict) else {}) for it in (raw_data.get("prerequisites") or [])[:7]]
     except Exception:
         return PrerequisiteMap(prerequisites=[], learning_path=[], difficulty="unknown")
 
@@ -203,6 +205,8 @@ async def prerequisite_map(
             model=model,
         )
         val_data = json.loads(val_raw) if isinstance(val_raw, str) else val_raw
+        if not isinstance(val_data, dict):
+            val_data = {}
     except Exception:
         # 验证失败时降级为候选列表
         return PrerequisiteMap(
@@ -218,6 +222,8 @@ async def prerequisite_map(
 
     final_prereqs: list[Prerequisite] = []
     for item in (val_data.get("prerequisites") or []):
+        if not isinstance(item, dict):
+            continue  # 跳过非 dict 元素，防止 item.get() AttributeError
         concept_key = item.get("concept", "").lower().strip()
         # 用前缀匹配复用 TheoremSearch 结果
         matched_candidate = concept_to_candidate.get(concept_key)
