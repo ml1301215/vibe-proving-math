@@ -217,7 +217,9 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
                 elif kind == "error":
                     # 使用 vp-status 帧传递错误，_sse_generator 会将其转为
                     # {"status": msg, "step": "error"}，前端识别后抛出异常
-                    yield f"<!--vp-status:error|{payload}-->"
+                    # 清理 > 和 -- 避免截断 HTML 注释帧
+                    safe_err = str(payload).replace('>', ' ').replace('-->', '').replace('\n', ' ')
+                    yield f"<!--vp-status:error|{safe_err}-->"
         finally:
             if not task.done():
                 task.cancel()
