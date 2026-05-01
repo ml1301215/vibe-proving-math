@@ -2923,8 +2923,20 @@ async function handleLearning(statement) {
     ['prereq', 'examples', 'extensions'].forEach(k => {
       b.querySelector(`[data-section="${k}"]`)?.removeAttribute('open');
     });
-    // 确保所有状态徽章显示"完成"（兼容 done 帧丢失的边缘情况）
-    ['background', 'prereq', 'proof', 'examples'].forEach(k => _setLearnSectionStatus(k, 'done'));
+    // 确保所有状态徽章显示"完成"；若某节仍是骨架占位，改为"无内容"空状态
+    const isZh = AppState.lang === 'zh';
+    ['background', 'prereq', 'proof', 'examples'].forEach(k => {
+      const secEl = b.querySelector(`[data-section="${k}"]`);
+      const body = secEl?.querySelector('.accordion-body');
+      const hasRealContent = body && !body.querySelector('.section-skeleton') && body.textContent.trim().length > 0;
+      if (!hasRealContent && body && body.querySelector('.section-skeleton')) {
+        // 骨架占位 → 改为「本节未返回内容」空状态
+        body.innerHTML = `<p class="section-empty-hint">${isZh ? '本节内容未生成，可点击「重新生成」重试。' : 'No content generated. Click "Regenerate" to retry.'}</p>`;
+        _setLearnSectionStatus(k, 'error');
+      } else {
+        _setLearnSectionStatus(k, 'done');
+      }
+    });
     // 最终 KaTeX 兜底渲染
     renderKatexFallback(b);
   }
@@ -3195,7 +3207,8 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
   if (bodyEl && rawBuffer) {
     // 提取 metadata（置信度、判定、引用）并渲染 verdict bar
     extractSolveMetadata(rawBuffer, metadata);
-    if (metadata.verdict && metadata.verdict !== 'unproven') {
+    // 有置信度或非默认判定时显示 verdict bar
+    if (metadata.verdict && (metadata.verdict !== 'unproven' || metadata.confidence > 0)) {
       const barHtml = buildVerdictBar(metadata);
       bodyEl.innerHTML = barHtml + renderMarkdown(rawBuffer);
     } else {
