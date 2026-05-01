@@ -2715,6 +2715,9 @@ function _renderLearnSectionError(sectionId, message) {
 window.retryLearnSection = async function(sectionId) {
   const ctx = window._lastLearnContext;
   if (!ctx || !sectionId) return;
+  // 防止同一节同时发起多个重试请求
+  if (retryLearnSection._running && retryLearnSection._running === sectionId) return;
+  retryLearnSection._running = sectionId;
   _setLearnSectionStatus(sectionId, 'running', t('ui.learn.statusRunning'));
   const body = document.querySelector(`#learn-body [data-section="${sectionId}"] .accordion-body`);
   if (body) {
@@ -2790,6 +2793,8 @@ window.retryLearnSection = async function(sectionId) {
   } catch (err) {
     _renderLearnSectionError(sectionId, err.message || String(err));
     showToast('error', err.message || String(err));
+  } finally {
+    retryLearnSection._running = null;
   }
 };
 
@@ -4316,7 +4321,8 @@ async function _handleReviewingPdf(attach, focusText) {
             throw new Error(obj.error);
           }
         } catch (parseErr) {
-          if (parseErr.message && parseErr.message !== 'Unexpected token') throw parseErr;
+          // 只吞掉 JSON.parse 产生的 SyntaxError；其他错误（如 step=error 触发的抛出）向上传
+          if (!(parseErr instanceof SyntaxError)) throw parseErr;
         }
       }
     }
@@ -4376,6 +4382,10 @@ async function handleSearching(query) {
 }
 
 function renderSearchResults(contentEl, data) {
+  if (!data || !data.results) {
+    contentEl.innerHTML = `<div class="search-empty">${t('ui.search.noResult')}</div>`;
+    return;
+  }
   const results = data.results || [];
   if (!results.length) {
     contentEl.innerHTML = `<div class="search-empty">${t('ui.search.noResult')}</div>`;
@@ -4391,21 +4401,23 @@ function renderSearchResults(contentEl, data) {
     const paper = r.paper_title || r.source || '';
     const slogan = r.slogan || '';
     const link = r.link || '';
+    // 只允许 http/https 协议，防止 javascript: 等恶意链接
+    const safeLink = /^https?:\/\//i.test(link) ? link : '';
     const authors = Array.isArray(r.paper_authors) && r.paper_authors.length
       ? r.paper_authors.slice(0, 3).join(', ') + (r.paper_authors.length > 3 ? ' et al.' : '')
       : '';
 
-    const nameHtml = link
-      ? `<a class="search-result-name-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${renderInlineMd(name)}</a>`
+    const nameHtml = safeLink
+      ? `<a class="search-result-name-link" href="${escapeHtml(safeLink)}" target="_blank" rel="noopener">${renderInlineMd(name)}</a>`
       : `<span>${renderInlineMd(name)}</span>`;
 
-    const sourceHtml = (paper || link) ? `
+    const sourceHtml = (paper || safeLink) ? `
       <div class="search-result-source">
         <span class="search-result-source-icon">↗</span>
         <span class="search-result-source-body">
           ${paper ? `<span class="search-result-paper">${renderInlineMd(paper)}</span>` : ''}
           ${authors ? `<span class="search-result-authors">${escapeHtml(authors)}</span>` : ''}
-          ${link ? `<a class="search-result-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${escapeHtml(link.replace(/^https?:\/\//, '').split('/').slice(0, 3).join('/'))}</a>` : ''}
+          ${safeLink ? `<a class="search-result-link" href="${escapeHtml(safeLink)}" target="_blank" rel="noopener">${escapeHtml(safeLink.replace(/^https?:\/\//, '').split('/').slice(0, 3).join('/'))}</a>` : ''}
         </span>
       </div>` : '';
 
@@ -4954,8 +4966,15 @@ async function checkHealth() {
     el.className = `status-badge ${isOk ? 'ok' : status === '--' ? 'unknown' : 'unavailable'}`;
   };
 
+  // 12 秒超时：避免 fetch 无限挂起导致 _running 永不清除
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+
   try {
-    const data = await apiFetch('/health');
+    const resp = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
     setStatus('status-api', 'ok');
     const llmStatus = data.dependencies?.llm?.status || '--';
     setStatus('status-llm', llmStatus === 'ok' ? 'ok' : llmStatus);
@@ -4973,8 +4992,10 @@ async function checkHealth() {
       const el = document.getElementById('input-llm-model');
       if (el && !el.value) el.value = llmInfo.model;
     }
-  } catch {
-    setStatus('status-api', 'offline');
+  } catch (err) {
+    clearTimeout(timer);
+    const isTimeout = err && err.name === 'AbortError';
+    setStatus('status-api', isTimeout ? 'timeout' : 'offline');
     setStatus('status-llm', '--');
     setStatus('status-ts', '--');
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot offline'; }
