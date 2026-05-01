@@ -4347,6 +4347,11 @@ async function _handleReviewingPdf(attach, focusText) {
         renderReviewSummary(contentEl.querySelector('#rv-final'), partial);
       }
     }
+    // 与文本审查路径对齐：把 AI 回复内容追加到历史，避免回放时显示空白
+    const lastHistoryPdf = AppState.history[AppState.history.length - 1];
+    if (lastHistoryPdf && lastHistoryPdf.role === 'ai' && !lastHistoryPdf.content) {
+      lastHistoryPdf.content = isZh ? '证明审查 (PDF) 完成' : 'PDF proof review complete';
+    }
     saveCurrentSession(isZh ? '证明审查 (PDF)' : 'Proof review (PDF)');
     Attachments.clear();
   } catch (err) {
