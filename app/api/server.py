@@ -215,7 +215,9 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
                     ).decode("ascii")
                     yield f"<!--vp-final:{enc}-->"
                 elif kind == "error":
-                    yield f"data: {_js.dumps({'error': payload}, ensure_ascii=False)}\n\n"
+                    # 使用 vp-status 帧传递错误，_sse_generator 会将其转为
+                    # {"status": msg, "step": "error"}，前端识别后抛出异常
+                    yield f"<!--vp-status:error|{payload}-->"
         finally:
             if not task.done():
                 task.cancel()

@@ -4282,6 +4282,10 @@ async function _handleReviewingPdf(attach, focusText) {
           if (obj.status !== undefined) {
             const txt = contentEl.querySelector('.rv-status-text');
             if (txt) txt.textContent = obj.status;
+            // 审查 pipeline 内部错误由后端以 step="error" 形式传递
+            if (obj.step === 'error') {
+              throw new Error(obj.status);
+            }
           } else if (obj.result) {
             const payload = obj.result;
             if (payload && payload.data) {
