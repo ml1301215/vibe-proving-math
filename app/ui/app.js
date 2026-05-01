@@ -4939,6 +4939,8 @@ function closeModal(id) {
    18. 健康检查
 ───────────────────────────────────────────────────────────── */
 async function checkHealth() {
+  if (checkHealth._running) return;  // 防止并发重叠请求
+  checkHealth._running = true;
   const dot = document.getElementById('health-dot');
   const setStatus = (id, status) => {
     const el = document.getElementById(id);
@@ -4972,6 +4974,8 @@ async function checkHealth() {
     setStatus('status-llm', '--');
     setStatus('status-ts', '--');
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot offline'; }
+  } finally {
+    checkHealth._running = false;
   }
 }
 
@@ -5070,6 +5074,11 @@ function bindEvents() {
         return;
       }
       if (mode === AppState.mode && AppState.view === 'chat') return;
+      // 切换模式前先中止当前流式请求，避免后台 fetch 继续写入已清空的 DOM
+      if (AppState.isStreaming && AppState._abortController) {
+        AppState._abortController.abort();
+        AppState.set('isStreaming', false);
+      }
       // 切换模式 = 开启新会话
       const container = document.getElementById('chat-container');
       if (container) container.innerHTML = '';

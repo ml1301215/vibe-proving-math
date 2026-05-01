@@ -215,7 +215,7 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
                     ).decode("ascii")
                     yield f"<!--vp-final:{enc}-->"
                 elif kind == "error":
-                    yield f"\n_审查失败：{payload}_\n"
+                    yield f"data: {_js.dumps({'error': payload}, ensure_ascii=False)}\n\n"
         finally:
             if not task.done():
                 task.cancel()
