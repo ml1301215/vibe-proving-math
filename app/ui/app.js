@@ -3122,7 +3122,8 @@ async function handleSolving(statement) {
             throw new Error(obj.error);
           }
         } catch (parseErr) {
-          if (parseErr.message && parseErr.message !== raw) throw parseErr;
+          // 只吞掉 JSON.parse 产生的 SyntaxError；其他错误（如 obj.error 触发的抛出）向上传
+          if (!(parseErr instanceof SyntaxError)) throw parseErr;
         }
       }
     }
@@ -4250,6 +4251,7 @@ async function _handleReviewingPdf(attach, focusText) {
     fd.append('max_theorems', String(AppState.settings.maxTheorems || 5));
     fd.append('user_id', 'anonymous');
     if (AppState.lang) fd.append('lang', AppState.lang);
+    else fd.append('lang', 'zh');  // 始终传 lang，默认中文
     // 关键：显式走 agent 模式，否则后端默认 pipeline，无法体验 GROBID/对齐链路。
     fd.append('mode', 'agent');
     fd.append('check_logic', String(AppState.settings.checkLogic !== false));
