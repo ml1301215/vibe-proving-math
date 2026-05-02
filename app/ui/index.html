@@ -211,14 +211,17 @@
               data-i18n-aria-label="cards.searching.title" aria-label="定理检索">
         <div class="card-glyph searching-glyph">∇</div>
         <div class="card-title" data-i18n="cards.searching.title">定理检索</div>
-        <div class="card-desc" data-i18n="cards.searching.desc">直接搜索 Lean 4 定理库，获取形式化声明</div>
+        <div class="card-desc" data-i18n="cards.searching.desc">搜索 900 万+ 自然语言数学定理，获取定理的真实来源</div>
         <span class="card-arrow">→</span>
       </button>
 
       <button class="feature-card" data-action="open-projects" tabindex="0"
               data-i18n-aria-label="cards.projects.title" aria-label="项目管理">
         <div class="card-glyph projects-glyph">§</div>
-        <div class="card-title" data-i18n="cards.projects.title">项目管理</div>
+        <div class="card-title">
+          <span data-i18n="cards.projects.title">项目管理</span>
+          <span class="card-beta-badge">Beta</span>
+        </div>
         <div class="card-desc" data-i18n="cards.projects.desc">保存、组织并随时回到你的研究项目</div>
         <span class="card-arrow">→</span>
       </button>
@@ -227,7 +230,7 @@
               data-i18n-aria-label="cards.formalization.title" aria-label="形式化证明">
         <div class="card-glyph formalization-glyph">⊩</div>
         <div class="card-title" data-i18n="cards.formalization.title">形式化证明</div>
-        <div class="card-desc" data-i18n="cards.formalization.desc">将数学命题转化为 Lean 4 代码：搜索 mathlib4 · 自动形式化 · 本地编译验证</div>
+        <div class="card-desc" data-i18n="cards.formalization.desc">直接用Aristotle吧~</div>
         <span class="card-arrow card-external-arrow" title="在新标签页打开">↗</span>
       </button>
     </div>
@@ -273,11 +276,6 @@
         autocomplete="off"
         spellcheck="false"
       ></textarea>
-      <!-- LaTeX 生成开关，仅求解模式显示，位于发送按钮左侧 -->
-      <button class="toolbar-latex-btn" id="toolbar-latex-btn" type="button"
-              title="完成后生成 LaTeX 源码" style="display:none" data-active="false" aria-pressed="false">
-        <span class="toolbar-latex-icon">{ }</span>
-      </button>
       <button class="send-btn" id="send-btn"
               data-i18n-aria-label="input.sendAria" aria-label="发送"
               data-i18n-tooltip="input.sendTip" data-tooltip="发送 (↵)">
@@ -441,112 +439,67 @@
     </div>
   </div>
 
-  <div class="panel-section" id="section-level">
-    <div class="panel-section-title" data-i18n="panel.level">学习层次</div>
-    <div class="radio-group">
-      <label class="radio-label">
-        <input type="radio" name="level" value="undergraduate" checked>
-        <span data-i18n="panel.undergraduate">本科</span>
-      </label>
-      <label class="radio-label">
-        <input type="radio" name="level" value="graduate">
-        <span data-i18n="panel.graduate">研究生</span>
-      </label>
-    </div>
-  </div>
-
-  <div class="panel-section">
-    <div class="panel-section-title" data-i18n="panel.params">参数</div>
-
-    <div class="param-row" id="param-max-theorems" style="display:none">
-      <label class="param-label" data-i18n="panel.maxTheorems">最大定理数</label>
-      <input type="number" class="param-input" id="input-max-theorems"
-             value="5" min="1" max="20" style="width:60px">
-    </div>
-  </div>
-
-  <div class="panel-section">
-    <div class="panel-section-title" data-i18n="panel.features">功能</div>
-
-    <!-- 证明审查选项（仅 reviewing 模式显示） -->
-    <div class="param-row" id="param-check-logic" style="display:none">
-      <label class="param-label" data-i18n="panel.checkLogic">审查逻辑漏洞</label>
-      <label class="toggle-switch">
-        <input type="checkbox" id="toggle-check-logic" checked>
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-  </div>
-
   <!-- LLM API 配置 -->
   <div class="panel-section">
     <div class="panel-section-title" data-i18n="panel.llmConfig">LLM API 配置</div>
-    <div class="llm-presets">
-      <button class="llm-preset-btn" data-preset="deepseek">DeepSeek V4 Pro</button>
-      <a class="llm-preset-link" href="https://platform.deepseek.com/api_keys"
-         target="_blank" rel="noopener" data-i18n="panel.getKey">获取 Key ↗</a>
-      <span class="llm-preset-sep">·</span>
-      <button class="llm-preset-btn" data-preset="gemini">Gemini 3.1 Pro</button>
-      <a class="llm-preset-link" href="https://aistudio.google.com/app/apikey"
-         target="_blank" rel="noopener" data-i18n="panel.getKey">获取 Key ↗</a>
-    </div>
-    <div class="param-row param-row--col">
+    <div class="param-row">
       <label class="param-label" data-i18n="panel.baseUrl">Base URL</label>
-      <input id="input-llm-base-url" class="param-input param-input--full" type="text"
-        placeholder="https://api.deepseek.com/v1">
+      <input type="text" class="param-input" id="input-llm-base-url"
+             placeholder="https://api.example.com/v1" style="flex:1">
     </div>
-    <div class="param-row param-row--col">
+    <div class="param-row">
       <label class="param-label" data-i18n="panel.apiKey">API Key</label>
-      <input id="input-llm-api-key" class="param-input param-input--full" type="password"
-        placeholder="sk-... / AIza...">
+      <input type="password" class="param-input" id="input-llm-api-key"
+             placeholder="sk-..." style="flex:1">
     </div>
-    <div class="param-row param-row--col">
+    <div class="param-row">
       <label class="param-label" data-i18n="panel.model">Model</label>
-      <input id="input-llm-model" class="param-input param-input--full" type="text"
-        placeholder="deepseek-prover-v2">
+      <input type="text" class="param-input" id="input-llm-model"
+             placeholder="gpt-4" style="flex:1">
     </div>
-    <button id="btn-save-llm" class="btn-primary btn-save-cfg" data-i18n="panel.saveLlm">保存配置</button>
+    <div class="param-row" style="justify-content:space-between;align-items:center;padding-top:4px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">
+        <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener"
+           class="link-btn">DeepSeek API Key ↗</a>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"
+           class="link-btn">Gemini API Key ↗</a>
+        <a href="https://www.vals.ai/benchmarks#math-benchmarks" target="_blank" rel="noopener"
+           class="link-btn">模型基准参考 ↗</a>
+      </div>
+    </div>
+    <div class="param-row" style="justify-content:flex-end;gap:8px">
+      <button class="llm-preset-btn btn-preset" data-preset="deepseek" data-i18n="panel.presetDeepseek">DeepSeek V4 Pro</button>
+      <button class="llm-preset-btn btn-preset" data-preset="gemini" data-i18n="panel.presetGemini">Gemini 3.1 Pro</button>
+    </div>
+    <div class="param-row" style="justify-content:flex-end">
+      <button class="btn-primary" id="btn-save-llm" data-i18n="panel.saveLlm">保存配置</button>
+    </div>
   </div>
 
-  <!-- Nanonets PDF 解析配置 -->
+  <!-- Nanonets OCR 配置 -->
   <div class="panel-section">
-    <div class="panel-section-title" data-i18n="panel.nanonetsCfg">Nanonets PDF 解析</div>
-    <div class="llm-presets">
-      <a class="llm-preset-link" href="https://app.nanonets.com/#/keys"
-         target="_blank" rel="noopener" data-i18n="panel.getNanoneetsKey">申请 API Key ↗</a>
+    <div class="panel-section-title" data-i18n="panel.nanonetsCfg">Nanonets OCR 配置</div>
+    <div class="param-row">
+      <label class="param-label">API Key</label>
+      <input type="password" class="param-input" id="input-nanonets-key"
+             placeholder="nanonets-api-key" style="flex:1">
     </div>
-    <div class="param-row param-row--col">
-      <label class="param-label" data-i18n="panel.apiKey">API Key</label>
-      <input id="input-nanonets-key" class="param-input param-input--full" type="password"
-        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    <div class="param-row" style="justify-content:space-between;align-items:center">
+      <a href="https://app.nanonets.com/" target="_blank" rel="noopener"
+         class="link-btn" data-i18n="panel.getNanoneetsKey">申请 API Key ↗</a>
+      <button class="btn-primary" id="btn-save-nanonets" data-i18n="panel.saveNanonets">保存</button>
     </div>
-    <button id="btn-save-nanonets" class="btn-primary btn-save-cfg" data-i18n="panel.saveNanonets">保存</button>
   </div>
 
   <div class="panel-section panel-status">
     <div class="panel-section-title" data-i18n="panel.status">服务状态</div>
     <div class="status-row">
-      <span class="status-label">API</span>
-      <span class="status-badge" id="status-api">--</span>
-    </div>
-    <div class="status-row">
-      <span class="status-label">LLM</span>
+      <span class="status-label">LLM api</span>
       <span class="status-badge" id="status-llm">--</span>
     </div>
     <div class="status-row">
-      <span class="status-label">TheoremSearch</span>
-      <span class="status-badge" id="status-ts">--</span>
-    </div>
-  </div>
-
-  <div class="panel-section">
-    <div class="panel-section-title" data-i18n="panel.shortcuts">快捷键</div>
-    <div class="shortcuts-list">
-      <div><kbd>↵</kbd> <span data-i18n="panel.skSend">发送</span></div>
-      <div><kbd>Shift</kbd>+<kbd>↵</kbd> <span data-i18n="panel.skNewline">换行</span></div>
-      <div><kbd>Esc</kbd> <span data-i18n="panel.skStop">停止生成</span></div>
-      <div><kbd>Ctrl</kbd>+<kbd>/</kbd> <span data-i18n="panel.skFocus">聚焦输入框</span></div>
-      <div><kbd>Ctrl</kbd>+<kbd>1-4</kbd> <span data-i18n="panel.skMode">切换模式</span></div>
+      <span class="status-label">Nanonets api</span>
+      <span class="status-badge" id="status-nanonets">--</span>
     </div>
   </div>
 </aside>
@@ -749,6 +702,6 @@
   </div>
 </div>
 
-<script src="app.js?v=f106"></script>
+<script src="app.js?v=f112"></script>
 </body>
 </html>

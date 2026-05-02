@@ -46,7 +46,7 @@ _LATEX_STYLE_INSTRUCTION = (
     "When you mention any mathematical object, variable, formula, set, map, inequality, congruence, "
     "norm, cardinality, or symbolic relation in summary/reason/text fields, wrap the mathematical part "
     "in inline LaTeX using `$...$`. "
-    "Examples: `$G$`, `$H \\le G$`, `$|H| \\mid |G|$`, `$g \\in G$`, `$a^{p-1} \\equiv 1 \\pmod p$`. "
+    "Examples: `$G$`, `$H \\le G$`, `$|H| \\mid |G|$`, `$g \\in G$`, `$a^{{p-1}} \\equiv 1 \\pmod p$`. "
     "Do not emit bare Unicode math such as `∈`, `≤`, `⊂`, `|G|`, `a_n`, `f: X \\to Y` outside `$...$`. "
     "Use plain natural language outside math delimiters, and do not use Markdown formatting besides LaTeX math."
 )

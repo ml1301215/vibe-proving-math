@@ -262,7 +262,9 @@ async def run_formalization(
     beam_width = max(1, min(int(_BEAM_WIDTH or 1), 3))
 
     def _status(step: str, msg: str) -> str:
-        return f"<!--vp-status:{step}|{msg}-->"
+        # 清理特殊字符避免截断HTML注释帧
+        safe_msg = str(msg).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if msg else msg
+        return f"<!--vp-status:{step}|{safe_msg}-->"
 
     def _final(result: FormalizeResult) -> str:
         payload = base64.b64encode(json.dumps(result.to_dict(), ensure_ascii=False).encode()).decode()
@@ -756,7 +758,9 @@ async def run_formalization_aristotle(
     tools = tools or FormalizationTools()
 
     def _status(step: str, msg: str) -> str:
-        return f"<!--vp-status:{step}|{msg}-->"
+        # 清理特殊字符避免截断HTML注释帧
+        safe_msg = str(msg).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if msg else msg
+        return f"<!--vp-status:{step}|{safe_msg}-->"
 
     def _final(result: FormalizeResult) -> str:
         payload = base64.b64encode(json.dumps(result.to_dict(), ensure_ascii=False).encode()).decode()

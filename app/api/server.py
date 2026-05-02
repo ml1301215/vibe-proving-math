@@ -103,6 +103,7 @@ class SolveRequest(BaseModel):
 
 class SolveLatexRequest(BaseModel):
     blueprint: str
+    statement: str = ""
     model: Optional[str] = None
 
 
@@ -177,7 +178,9 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
         SENTINEL_DONE = object()
 
         async def _on_progress(step: str, msg: str) -> None:
-            await queue.put(("status", step, msg))
+            # 清理特殊字符避免截断HTML注释帧
+            safe_msg = str(msg).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if msg else msg
+            await queue.put(("status", step, safe_msg))
 
         async def _on_result(payload: dict) -> None:
             await queue.put(("result", "data", payload))
@@ -203,7 +206,9 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
                 if kind is SENTINEL_DONE:
                     break
                 if kind == "status":
-                    yield f"<!--vp-status:{k2}|{payload}-->"
+                    # 再次确保payload不含特殊字符（双重保护）
+                    safe_payload = str(payload).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if payload else payload
+                    yield f"<!--vp-status:{k2}|{safe_payload}-->"
                 elif kind == "result":
                     enc = _b64s.b64encode(
                         _js.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -496,7 +501,9 @@ async def solve(req: SolveRequest):
             status_queue: _asyncio.Queue = _asyncio.Queue()
 
             async def _on_progress(step: str, message: str) -> None:
-                await status_queue.put((step, message))
+                # 清理特殊字符避免截断HTML注释帧
+                safe_message = str(message).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if message else message
+                await status_queue.put((step, safe_message))
 
             yield "<!--vp-status:start|启动求解 pipeline…-->"
 
@@ -545,7 +552,7 @@ async def solve_latex(req: SolveLatexRequest):
     from modes.research.solver import generate_proof_latex
 
     async def _gen():
-        async for chunk in generate_proof_latex(req.blueprint, model=req.model):
+        async for chunk in generate_proof_latex(req.blueprint, statement=req.statement, model=req.model):
             yield chunk
 
     return StreamingResponse(

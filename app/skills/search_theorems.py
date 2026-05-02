@@ -37,8 +37,9 @@ _LATEX_NOISE_PATTERNS = [
     re.compile(r"\\verb\|[^|]*\|"),                 # \verb|...|
     re.compile(r"\\verb\+[^+]*\+"),                 # \verb+...+
     re.compile(r"\\verb!([^!]*)!"),                 # \verb!...!
-    re.compile(r"\\begin\{[a-zA-Z*]+\}"),
-    re.compile(r"\\end\{[a-zA-Z*]+\}"),
+    # 只删除文档结构相关的环境，保留数学环境（如equation, align, sequence等）
+    re.compile(r"\\begin\{(?:document|abstract|center|flushleft|flushright|minipage|figure|table|tabular|verbatim|comment)\*?\}"),
+    re.compile(r"\\end\{(?:document|abstract|center|flushleft|flushright|minipage|figure|table|tabular|verbatim|comment)\*?\}"),
     re.compile(r"\\(?:label|cite|ref|footnote|index)\{[^}]*\}"),
     re.compile(r"%[^\n]*"),                          # LaTeX 行内注释
 ]
@@ -47,7 +48,11 @@ _NEWLINE_RE = re.compile(r"\n{3,}")
 
 
 def _clean_latex_noise(text: str) -> str:
-    """去除 \\verb 标记、\\begin{} \\end{} 残留、注释等无意义 LaTeX 噪声。"""
+    """去除 \\verb 标记、文档结构环境残留、注释等无意义 LaTeX 噪声。
+
+    保留数学环境命令（如 \\begin{equation}, \\sequence 等），
+    只删除文档结构相关的环境（如 \\begin{document}, \\begin{abstract} 等）。
+    """
     if not text:
         return text
     out = text
@@ -79,8 +84,13 @@ class TheoremMatch:
 
     def to_dict(self) -> dict:
         data = asdict(self)
+        # 对所有文本字段进行LaTeX清理，确保前端不显示LaTeX宏命令残留
+        data["name"] = strip_non_math_latex(data["name"])
+        data["body"] = strip_non_math_latex(data["body"])
+        data["slogan"] = strip_non_math_latex(data["slogan"])
+        data["paper_title"] = strip_non_math_latex(data["paper_title"])
         data["paper_authors"] = [strip_non_math_latex(a) for a in self.paper_authors]
-        return sanitize_dict(data)
+        return data
 
     def to_citation(self) -> str:
         """生成引用文本，用于注入 LLM prompt。"""

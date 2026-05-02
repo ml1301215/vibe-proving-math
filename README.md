@@ -310,6 +310,23 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 访问：`http://127.0.0.1:8080/ui/`、`http://127.0.0.1:8080/docs`、`http://127.0.0.1:8080/health`。
 
+### LLM 配置
+
+前端「设置」面板支持在运行时热切换 Base URL / API Key / Model，无需重启服务。  
+后端调用标准 [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat)，兼容所有使用 OpenAI 接口协议的服务，包括官方端点和各类中转站。
+
+| 提供商 | Base URL | 获取密钥 |
+|--------|----------|----------|
+| DeepSeek（推荐：极致性价比） | `https://api.deepseek.com/v1` | [platform.deepseek.com](https://platform.deepseek.com/api_keys) |
+| Gemini（推荐：极致推理能力） | `https://generativelanguage.googleapis.com/v1beta/openai` | [aistudio.google.com](https://aistudio.google.com/apikey) |
+| OpenAI 官方 | `https://api.openai.com/v1` | [platform.openai.com](https://platform.openai.com/api-keys) |
+| SiliconFlow | `https://api.siliconflow.cn/v1` | [cloud.siliconflow.cn](https://cloud.siliconflow.cn) |
+| Moonshot (Kimi) | `https://api.moonshot.cn/v1` | [platform.moonshot.cn](https://platform.moonshot.cn) |
+| 通义千问 (Qwen) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | [dashscope.aliyun.com](https://dashscope.aliyun.com) |
+| OneAPI / 自建中转 | `http://your-host/v1` | 自定义 | 
+
+> 只要服务支持 OpenAI Chat Completions 格式，直接填入 Base URL 与 API Key 即可，无需任何代码改动。
+
 ### 配置文件路径
 
 - 默认读取 `app/config.toml`（已被 `.gitignore` 忽略，勿提交）。

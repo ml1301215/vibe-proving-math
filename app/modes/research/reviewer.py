@@ -146,7 +146,7 @@ _LATEX_STYLE_INSTRUCTION = (
     "When you mention any mathematical symbol, variable, formula, set, function, inequality, congruence, "
     "or relation in any JSON string field such as summary/description/fix_suggestion, wrap the mathematical "
     "part in inline LaTeX using `$...$`. "
-    "Examples: `$G$`, `$H \\le G$`, `$|H| \\mid |G|$`, `$g \\in G$`, `$f: X \\to Y$`, `$a^{p-1} \\equiv 1 \\pmod p$`. "
+    "Examples: `$G$`, `$H \\le G$`, `$|H| \\mid |G|$`, `$g \\in G$`, `$f: X \\to Y$`, `$a^{{p-1}} \\equiv 1 \\pmod p$`. "
     "Do not output bare Unicode math symbols like `∈`, `≤`, `⊂`, `≅`, `|G|` outside `$...$`. "
     "Use plain natural language outside math delimiters, and do not use Markdown formatting besides LaTeX math."
 )

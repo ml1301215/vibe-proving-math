@@ -106,19 +106,21 @@ class TheoremSearchClient:
             return cached
 
         url = f"{self._base}/search"
+        client = _get_http_client()
         try:
-            client = _get_http_client()
+            logger.info("TheoremSearch API call: query=%r, top_k=%d, base_url=%s", query[:50], top_k, self._base)
             resp = await client.post(url, json={"query": query, "n_results": top_k})
             resp.raise_for_status()
             data = resp.json()
-        except Exception as exc:
-            logger.warning("TheoremSearch.search failed: %s", exc)
-            return []
+        except Exception as e:
+            logger.error("TheoremSearch API failed: %s (base_url=%s)", str(e), self._base)
+            raise
 
         results = data.get("theorems", data) if isinstance(data, dict) else data
         if min_similarity > 0:
             results = [r for r in results if r.get("similarity", 0) >= min_similarity]
 
+        logger.info("TheoremSearch returned %d results for query=%r", len(results), query[:50])
         _cache_set(cache_key, results)
         return results
 

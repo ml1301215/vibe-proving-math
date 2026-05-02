@@ -188,7 +188,9 @@ def _fix_broken_dollar(text: str) -> str:
 
 
 def _status_frame(step: str, message: str) -> str:
-    return f"<!--vp-status:{step}|{message}-->"
+    # 清理特殊字符避免截断HTML注释帧
+    safe_message = str(message).replace('>', ' ').replace('-->', ' ').replace('\n', ' ') if message else message
+    return f"<!--vp-status:{step}|{safe_message}-->"
 
 
 async def _stream_stripped(
@@ -261,7 +263,8 @@ async def stream_card_background(
         elif mactutor_text:
             yield f"\n\n> 来源：MacTutor History of Mathematics, University of St Andrews\n"
         else:
-            yield "\n\n> 来源：数学历史文献综合（MacTutor 检索不可用）\n"
+            # MacTutor检索未找到相关内容时，LLM基于自身知识生成
+            yield "\n\n> 来源：数学史文献综合\n"
     except Exception as e:
         yield _section_error_frame("background", f"{type(e).__name__}: {e}")
         yield f"_背景生成失败：{type(e).__name__}: {e}_\n"

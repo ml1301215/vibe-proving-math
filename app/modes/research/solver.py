@@ -360,7 +360,7 @@ async def _solve_inner(statement: str, model=None, progress: ProgressCb = None, 
     if is_interrogative:
         error_detail = "经过多轮证明尝试与反例检验均未得出确定结论。此类命题可能属于未解决的前沿问题，建议查阅最新文献。"
         if logical_failures:
-            error_detail += "\n\n**探索过程中的发现：**\n" + "\n".join(f"- {fp[:200]}" for fp in logical_failures[-3:])
+            error_detail += "\n\n**探索过程中的发现：**\n" + "\n".join(f"- {fp}" for fp in logical_failures[-3:])
         return SolverResult(
             blueprint=(
                 "## ⚠️ 无确定结论（疑问式命题）\n\n"
@@ -434,7 +434,7 @@ async def _solve_inner(statement: str, model=None, progress: ProgressCb = None, 
         subgoal_results.append({
             "id": sg.id,
             "statement": sg.statement,
-            "proof": sg_proof.proof[:4000],
+            "proof": sg_proof.proof,
             "status": sg_proof.status,
             "confidence": sg_proof.confidence,
             "verified": (sg_verify.overall == "passed") if sg_verify else False,
@@ -447,10 +447,10 @@ async def _solve_inner(statement: str, model=None, progress: ProgressCb = None, 
     blueprint_lines.append(f"**证明策略：** {decomp.strategy}\n")
     for sg_r in subgoal_results:
         status_emoji = "✓" if sg_r["status"] == "proved" else "△" if sg_r["status"] == "partial" else "✗"
-        blueprint_lines.append(f"### {sg_r['id']}. {sg_r['statement'][:120]}")
+        blueprint_lines.append(f"### {sg_r['id']}. {sg_r['statement']}")
         blueprint_lines.append(f"*{status_emoji} 置信度 {sg_r['confidence']:.0%}*\n")
         if sg_r["proof"]:
-            blueprint_lines.append(sg_r["proof"][:4000])
+            blueprint_lines.append(sg_r["proof"])
         blueprint_lines.append("")
 
     # 附上失败路径摘要（折叠，对用户透明但不喧宾夺主）
@@ -458,7 +458,7 @@ async def _solve_inner(statement: str, model=None, progress: ProgressCb = None, 
     if all_failed:
         blueprint_lines.append("\n<details>\n<summary>探索过程（点击展开）</summary>\n")
         for fp in all_failed[:4]:
-            blueprint_lines.append(f"> {fp[:200]}\n")
+            blueprint_lines.append(f"> {fp}\n")
         blueprint_lines.append("</details>\n")
 
     await _emit(progress, "verifying", "正在核查引用…")
@@ -529,16 +529,20 @@ Start your output with \\documentclass{amsart} and end with \\end{document}.
 """
 
 
-async def generate_proof_latex(blueprint: str, model: Optional[str] = None) -> AsyncIterator[str]:
+async def generate_proof_latex(blueprint: str, statement: str = "", model: Optional[str] = None) -> AsyncIterator[str]:
     """将证明蓝图转换为可编译的 LaTeX 代码（流式输出）。"""
     from core.llm import stream_chat
 
-    # 截断过长蓝图，避免 token 超限
-    text = blueprint[:12000] if len(blueprint) > 12000 else blueprint
+    # 如果提供了statement，在用户消息中包含它
+    if statement:
+        user_message = f"**Problem Statement:**\n{statement}\n\n**Proof Blueprint:**\n{blueprint}"
+    else:
+        user_message = blueprint
 
     async for chunk in stream_chat(
-        text,
+        user_message,
         system=_LATEX_SYSTEM,
         model=model,
+        max_tokens=16384,
     ):
         yield chunk

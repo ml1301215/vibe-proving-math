@@ -35,7 +35,7 @@ const I18N = {
       searching:      { title: '定理检索', desc: '搜索 900 万+ 自然语言数学定理，获取定理的真实来源' },
       projects:       { title: '项目管理', desc: '保存、组织并随时回到你的研究项目' },
       history:        { title: '历史会话', desc: '浏览近期对话与提问记录，一键继续' },
-      formalization:  { title: '形式化证明', desc: '将数学命题转化为 Lean 4 代码：搜索 mathlib4 · 自动形式化 · 本地编译验证' },
+      formalization:  { title: '形式化证明', desc: '直接用Aristotle吧~' },
     },
     modes: {
       learning: '学习模式', solving: '问题求解',
@@ -52,6 +52,9 @@ const I18N = {
       proofFocusPlaceholder: '可补充审查重点（可选）…',
       stop: '■ 停止', stopAria: '停止生成',
       sendTip: '发送 (↵)', sendAria: '发送', aria: '输入数学命题',
+      solvingPlaceholder: '输入待证命题…',
+      learningPlaceholder: '输入数学命题或定理名…',
+      searchingPlaceholder: '用自然语言描述定理，例如：无穷多个素数…',
     },
     panel: {
       title: '运行设置', close: '关闭',
@@ -72,6 +75,8 @@ const I18N = {
       saving: '保存中…', saved: '已保存 ✓', saveFailed: '保存失败',
       saveFailedHint: '配置保存失败，请检查网络',
       baseUrl: 'Base URL', apiKey: 'API Key', model: 'Model',
+      presetDeepseek: 'DeepSeek V4 Pro',
+      presetGemini: 'Gemini 3.1 Pro',
     },
     modal: { projects: {
       title: '项目管理', new: '新建项目',
@@ -124,6 +129,23 @@ const I18N = {
       },
       copy: '复制', copied: '已复制', retry: '重试', stopped: '已停止',
       noHistory: '暂无历史', noProjects: '暂无项目',
+      solveStarting: '启动求解…',
+      solveDone: '求解完成',
+      solveStopped: '已停止',
+      noThumbnail: '暂无缩略图预览',
+      latexGenerating: '生成中…',
+      latexDone: '完成',
+      latexCopied: '已复制!',
+      latexError: '失败：{e}',
+      latexBtnTitle: '生成可编译 LaTeX 源码',
+      latexNoBlueprintHint: '暂无证明内容',
+      latexOverleafHtml: '推荐使用 <a href="https://www.overleaf.com" target="_blank" rel="noopener noreferrer">Overleaf 在线编译器</a> 编译此 LaTeX 文件',
+      reviewComplete: '审查完成',
+      reviewIncomplete: '审查未完成（数据不完整）',
+      reviewSectionProgress: '正在审查章节 {n}/{total}：{title}',
+      attachFilePrefix: '--- 文件：',
+      reviewFocusPrefix: '【审查重点】',
+      histGroup: { today: '今天', week: '7 天内', month: '本月', older: '更早' },
       err: {
         network: '网络中断，请检查连接后重试',
         timeout: '请求超时，模型可能较忙，请稍后重试',
@@ -148,25 +170,22 @@ const I18N = {
     docs: {
       title: 'vibe_proving — 使用指南',
       btnTitle: '使用指南',
-      heroPara: '严谨 · 可验证 · 不逢迎。将语言模型与形式化数学工具结合，为数学专业学生和研究者提供证明辅助、深度学习讲解、逻辑审查与定理检索。',
-      modulesTitle: '四大核心模块',
+      heroPara: '为数学工作者设计的推理伙伴。不逢迎、可验证、追求严谨。',
+      modulesTitle: '核心功能',
       cards: [
-        { icon: 'ℓ', title: '学习模式', body: '输入任意数学命题或定理，AI 自动生成：<br>• <strong>数学背景</strong>：历史脉络与意义<br>• <strong>完整证明</strong>：分步标注，每步说明 why<br>• <strong>具体例子</strong>：包含边界情形分析<br>• <strong>前置知识</strong>：理解该证明所需的概念清单' },
-        { icon: '∂', title: '问题求解', body: '输入待证命题，AI 自动：<br>• 尝试直接证明（多轮修订循环）<br>• 反例测试（检验命题是否成立）<br>• 子目标分解（复杂命题拆分）<br>• 引用核查（TheoremSearch 验证）<br>• 置信度评估，低置信度时主动拒绝' },
-        { icon: '¶', title: '证明审查', body: '粘贴或上传证明文本（.tex/.txt/.md），AI：<br>• 逐步核验每个推理步骤<br>• 标注 passed / gap / critical_error<br>• 检查引用定理是否真实存在<br>• 给出整体判定：Correct / Partial / Incorrect<br>支持 LaTeX 环境（\\begin{theorem}…）' },
-        { icon: '∇', title: '定理检索', body: '直接搜索 900 万+ 自然语言数学定理（来自 arXiv、Stacks Project 等）：<br>• 自然语言查询（"Cauchy sequence convergence"）<br>• 返回定理名、slogan、来源论文、arXiv 链接<br>• 相似度排序，高质量结果排前<br>学习/求解模式自动调用此接口补充上下文' },
+        { icon: 'ℓ', title: '学习模式', body: '输入数学命题，生成结构化教学讲解：<br>• <strong>数学背景</strong>：历史脉络与实质意义<br>• <strong>完整证明</strong>：分步标注，阐明推理逻辑<br>• <strong>前置知识</strong>：理解该证明所需的概念<br>• <strong>具体例子</strong>：含边界情形与典型应用' },
+        { icon: '∂', title: '问题求解', body: '输入待证命题，自动构建证明：<br>• GVR 循环：生成、验证、修订直至收敛<br>• 反例测试：检验命题可证性<br>• 置信度评估：不确定时主动拒绝' },
+        { icon: '¶', title: '证明审查', body: '上传或粘贴证明文本，AI 逐步审查：<br>• 逻辑漏洞检测：gap / critical_error 标注<br>• 引用核查：TheoremSearch 验证定理真实性<br>• 符号一致性：检查变量使用与定义一致<br>• 整体判定：Correct / Partial / Incorrect' },
+        { icon: '∇', title: '定理检索', body: '搜索 900 万+ 数学定理（arXiv、Stacks Project）：<br>• 自然语言查询（如 "Sylow theorem"）<br>• 返回定理陈述、来源论文、arXiv 链接<br>• 相似度排序，高质量结果优先<br>• 学习/求解模式自动调用补充上下文' },
       ],
-      kbTitle: '§ Project 知识库',
-      kbDesc: 'Project 是长期研究的组织单位，每个 Project 拥有独立的：',
+      kbTitle: '项目管理 (Beta)',
+      kbDesc: 'Project 是长期研究的组织单位。每个项目拥有独立的知识库、概念状态与开放问题，支持持续迭代研究。',
       steps: [
-        { n: 1, title: '创建项目', body: '左侧导航点"项目"，或主界面点"项目管理"，输入 ID 和名称创建。' },
-        { n: 2, title: '上传知识库', body: '在项目详情的 Knowledge Base 区域，拖拽或点击上传 PDF、LaTeX (.tex)、TXT、MD 文件（最大 20 MB）。上传后 AI 自动分块，写入项目记忆。' },
-        { n: 3, title: '激活项目', body: '点击"Use this project"，此后所有对话都会先检索该项目的知识库，将相关段落注入模型上下文。' },
-        { n: 4, title: 'KB Only 模式', body: '开启"KB only"开关，模型被要求仅在知识库范围内回答，适合考试复习或精读某本教材。' },
-        { n: 5, title: '概念追踪', body: '手动记录每个概念的理解状态（未接触 → 有疑惑 → 已理解 → 已掌握），建立个人知识图谱。' },
-        { n: 6, title: '开放问题', body: '记录学习过程中未解决的问题，下次进入项目时一键继续。' },
+        { n: '1', title: '创建项目', body: '点击左侧"项目"，新建并命名你的研究项目' },
+        { n: '2', title: '上传知识库', body: '添加 PDF / LaTeX / Markdown 文档作为上下文' },
+        { n: '3', title: '对话与记忆', body: '所有对话自动关联项目，AI 记忆随项目持久化' },
       ],
-      tip: '切换模块时会自动选用最适合该任务的模型。也可在底部下拉手动切换。',
+      tip: '',
     },
   },
   en: {
@@ -194,7 +213,7 @@ const I18N = {
       searching:      { title: 'Theorem Search',  desc: 'Search 9M+ math theorems in natural language and get real sources' },
       projects:       { title: 'Projects',        desc: 'Save, organize and resume your research projects' },
       history:        { title: 'History',         desc: 'Browse recent sessions and resume any conversation' },
-      formalization:  { title: 'Formalization', desc: 'Lean 4 via Harmonic Aristotle (mathlib search · cloud prove); pipeline mode for local LLM fallback' },
+      formalization:  { title: 'Formalization', desc: 'Just use Aristotle~' },
     },
     modes: {
       learning: 'Learning', solving: 'Solving',
@@ -211,6 +230,9 @@ const I18N = {
       proofFocusPlaceholder: 'Optional: add a review focus…',
       stop: '■ Stop', stopAria: 'Stop generation',
       sendTip: 'Send (↵)', sendAria: 'Send', aria: 'Math statement input',
+      solvingPlaceholder: 'Enter a statement to prove…',
+      learningPlaceholder: 'Enter a theorem or math concept…',
+      searchingPlaceholder: 'Describe a theorem in natural language…',
     },
     panel: {
       title: 'Run settings', close: 'Close',
@@ -231,6 +253,8 @@ const I18N = {
       saving: 'Saving…', saved: 'Saved ✓', saveFailed: 'Save failed',
       saveFailedHint: 'Config save failed, please check your network',
       baseUrl: 'Base URL', apiKey: 'API Key', model: 'Model',
+      presetDeepseek: 'DeepSeek V4 Pro',
+      presetGemini: 'Gemini 3.1 Pro',
     },
     modal: { projects: {
       title: 'Projects', new: 'New project',
@@ -283,6 +307,23 @@ const I18N = {
       },
       copy: 'Copy', copied: 'Copied!', retry: 'Retry', stopped: 'Stopped',
       noHistory: 'No history yet', noProjects: 'No projects yet',
+      solveStarting: 'Starting…',
+      solveDone: 'Solve complete',
+      solveStopped: 'Stopped',
+      noThumbnail: 'No thumbnail preview',
+      latexGenerating: 'Generating…',
+      latexDone: 'Done',
+      latexCopied: 'Copied!',
+      latexError: 'Error: {e}',
+      latexBtnTitle: 'Generate compilable LaTeX',
+      latexNoBlueprintHint: 'No proof content',
+      latexOverleafHtml: 'Compile with <a href="https://www.overleaf.com" target="_blank" rel="noopener noreferrer">Overleaf online compiler</a>',
+      reviewComplete: 'Review complete',
+      reviewIncomplete: 'Review incomplete (data missing)',
+      reviewSectionProgress: 'Reviewing section {n}/{total}: {title}',
+      attachFilePrefix: '--- File: ',
+      reviewFocusPrefix: '[Review focus] ',
+      histGroup: { today: 'Today', week: 'Past 7 days', month: 'This month', older: 'Older' },
       err: {
         network: 'Network lost. Please check your connection and retry.',
         timeout: 'Request timed out. The model may be busy, try again shortly.',
@@ -307,7 +348,7 @@ const I18N = {
     docs: {
       title: 'vibe_proving — User Guide',
       btnTitle: 'User Guide',
-      heroPara: 'Rigorous · Verifiable · Honest. Combines language models with formal math tools to provide proof assistance, in-depth explanations, logic review, and theorem retrieval for math students and researchers.',
+      heroPara: 'Rigorous · Verifiable · Honest.',
       modulesTitle: 'Four Core Modules',
       cards: [
         { icon: 'ℓ', title: 'Learning Mode', body: 'Enter any mathematical statement or theorem and AI generates:<br>• <strong>Background</strong>: historical context and significance<br>• <strong>Complete Proof</strong>: step-by-step with why at each step<br>• <strong>Examples</strong>: including boundary case analysis<br>• <strong>Further Reading</strong>: related theorems, open problems, exercises<br>• <strong>Prerequisites</strong>: concepts needed to understand the proof' },
@@ -325,7 +366,7 @@ const I18N = {
         { n: 5, title: 'Concept tracking', body: 'Manually record understanding state for each concept (Unseen → Confused → Understood → Mastered) to build your knowledge graph.' },
         { n: 6, title: 'Open questions', body: 'Record unresolved questions during study. Return to the project anytime and continue where you left off.' },
       ],
-      tip: 'Switching modes automatically selects the most suitable model for the task. You can also manually switch via the bottom dropdown.',
+      tip: '',
     },
   },
 };
@@ -461,6 +502,12 @@ function applyLang(lang) {
   refreshHistorySidebar();
   _renderDocsModal(lang);
 
+  // 语言切换时如果chat-empty正在显示，重新渲染
+  const chatContainer = document.getElementById('chat-container');
+  if (chatContainer && chatContainer.querySelector('.chat-empty')) {
+    _ensureChatEmptyState();
+  }
+
   // 切换语言时同步模型下拉的能力标签
   document.querySelectorAll('#model-dropdown .chip-option[data-tier-zh]').forEach(li => {
     const tierEl = li.querySelector('.chip-tier');
@@ -547,11 +594,12 @@ function _renderDocsModal(lang) {
     `<div class="docs-step"><span class="docs-step-num">${s.n}</span><div><strong>${s.title}</strong>：${s.body}</div></div>`
   ).join('');
   const tipLabel = lang === 'zh' ? '提示' : 'Tip';
+  const tipSection = d.tip ? `<div class="docs-section docs-tip"><strong>${tipLabel}：</strong>${d.tip}</div>` : '';
   body.innerHTML =
     `<div class="docs-hero"><h2>vibe_proving</h2><p>${d.heroPara}</p></div>` +
     `<div class="docs-section"><h3>${d.modulesTitle}</h3><div class="docs-grid">${cards}</div></div>` +
     `<div class="docs-section"><h3>${d.kbTitle}</h3><p>${d.kbDesc}</p><div class="docs-steps">${steps}</div></div>` +
-    `<div class="docs-section docs-tip"><strong>${tipLabel}：</strong>${d.tip}</div>`;
+    tipSection;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1177,12 +1225,24 @@ async function _loadPdfMeta(file, attachment) {
 ───────────────────────────────────────────────────────────── */
 let _thumbTooltipEl = null;
 let _hideTooltipTimer = null;
+let _tooltipChipEl = null;  // 当前触发 tooltip 的 chip 元素
+
+function _tooltipDocMouseover(e) {
+  // 鼠标移到 chip 或 tooltip 以外的元素时立即关闭
+  if (!_thumbTooltipEl) return;
+  if (
+    (_tooltipChipEl && _tooltipChipEl.contains(e.target)) ||
+    _thumbTooltipEl.contains(e.target)
+  ) return;
+  _hidePdfThumbTooltipNow();
+}
 
 function _showPdfThumbTooltip(chipEl, thumbnails) {
   if (_hideTooltipTimer) { clearTimeout(_hideTooltipTimer); _hideTooltipTimer = null; }
   _hidePdfThumbTooltipNow();
   if (!thumbnails?.length) return;
 
+  _tooltipChipEl = chipEl;
   const tooltip = document.createElement('div');
   tooltip.className = 'pdf-thumb-tooltip';
   tooltip.innerHTML = thumbnails.map(src =>
@@ -1190,6 +1250,11 @@ function _showPdfThumbTooltip(chipEl, thumbnails) {
   ).join('');
   document.body.appendChild(tooltip);
   _thumbTooltipEl = tooltip;
+
+  // 全局兜底：鼠标移到 chip/tooltip 之外立即关闭
+  document.addEventListener('mouseover', _tooltipDocMouseover, { capture: true });
+  // 滚动时关闭（scroll 发生后 chip 位置已变）
+  window.addEventListener('scroll', _hidePdfThumbTooltipNow, { capture: true, once: true });
 
   requestAnimationFrame(() => {
     const rect = chipEl.getBoundingClientRect();
@@ -1213,7 +1278,11 @@ function _hidePdfThumbTooltip() {
 
 function _hidePdfThumbTooltipNow() {
   if (_thumbTooltipEl) { _thumbTooltipEl.remove(); _thumbTooltipEl = null; }
+  _tooltipChipEl = null;
   _hideTooltipTimer = null;
+  // 清理全局监听器
+  document.removeEventListener('mouseover', _tooltipDocMouseover, { capture: true });
+  window.removeEventListener('scroll', _hidePdfThumbTooltipNow, { capture: true });
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1271,7 +1340,7 @@ function openPdfGallery(thumbnails, name, pageCount, objectUrl) {
           <div class="pdf-gallery-img-label">第 ${i + 1} 页</div>
         </div>`).join('');
     } else {
-      bodyEl.innerHTML = `<p style="color:var(--text-muted);padding:20px;">暂无缩略图预览</p>`;
+      bodyEl.innerHTML = `<p style="color:var(--text-muted);padding:20px;">${t('ui.noThumbnail')}</p>`;
     }
   }
 
@@ -1394,9 +1463,9 @@ const Attachments = {
     }
     const list = AppState.settings.attachments || [];
     const filesText = list
-      .map(a => `--- 文件: ${a.name} ---\n${a.content}`)
+      .map(a => `${t('ui.attachFilePrefix')}${a.name} ---\n${a.content}`)
       .join('\n\n');
-    const focus = userMsg ? `\n\n【审查重点】\n${userMsg}` : '';
+    const focus = userMsg ? `\n\n${t('ui.reviewFocusPrefix')}\n${userMsg}` : '';
     if (!filesText && !userMsg) return '';
     if (!filesText) return userMsg;
     return (filesText + focus).trim();
@@ -1433,10 +1502,10 @@ function _historyGroup(ts) {
   const now = Date.now();
   const oneDay = 24 * 60 * 60 * 1000;
   const dayDiff = Math.floor((now - ts) / oneDay);
-  if (dayDiff < 1) return AppState.lang === 'zh' ? '今天' : 'Today';
-  if (dayDiff < 7) return AppState.lang === 'zh' ? '7 天内' : 'Past 7 days';
-  if (dayDiff < 30) return AppState.lang === 'zh' ? '本月' : 'This month';
-  return AppState.lang === 'zh' ? '更早' : 'Older';
+  if (dayDiff < 1) return t('ui.histGroup.today');
+  if (dayDiff < 7) return t('ui.histGroup.week');
+  if (dayDiff < 30) return t('ui.histGroup.month');
+  return t('ui.histGroup.older');
 }
 
 function refreshHistorySidebar() {
@@ -1709,21 +1778,27 @@ const UI = {
     const navHome = document.getElementById('nav-playground');
     const btnHome = document.getElementById('btn-home');
     const btnPin  = document.getElementById('btn-pin');
+    const inputBar = document.getElementById('input-bar');
+    const chipRow = document.querySelector('.chip-row');
+    const examplePrompts = document.getElementById('example-prompts');
     if (!homeEl || !chatEl) return;
     if (view === 'home') {
       homeEl.style.display = '';
       chatEl.style.display = 'none';
       navHome && navHome.classList.add('active');
-      // plan E：home view 时隐藏返回按钮
       if (btnHome) btnHome.style.display = 'none';
       if (btnPin)  btnPin.style.display  = 'none';
+      if (inputBar) inputBar.style.display = 'none';
+      if (examplePrompts) examplePrompts.style.display = 'none';
     } else {
       homeEl.style.display = 'none';
       chatEl.style.display = '';
       navHome && navHome.classList.remove('active');
       if (btnHome) btnHome.style.display = '';
       if (btnPin)  btnPin.style.display  = '';
-      // plan F.3 (T50)：进入 chat 时若 container 为空，渲染一个引导占位
+      if (inputBar) inputBar.style.display = '';
+      if (chipRow) chipRow.style.display = 'none';
+      if (examplePrompts) examplePrompts.style.display = 'none';
       _ensureChatEmptyState();
     }
   },
@@ -1733,9 +1808,6 @@ const UI = {
     const isSolving = mode === 'solving';
     const attachBtn = document.getElementById('attach-btn');
     if (attachBtn) attachBtn.style.display = isReview ? '' : 'none';
-    // LaTeX 工具栏按钮：仅求解模式可见
-    const latexToolbarBtn = document.getElementById('toolbar-latex-btn');
-    if (latexToolbarBtn) latexToolbarBtn.style.display = isSolving ? '' : 'none';
     const chipsEl = document.getElementById('attachment-chips');
     if (chipsEl) {
       const has = (AppState.settings.attachments || []).length > 0;
@@ -1871,12 +1943,12 @@ function updateInputPlaceholder() {
     ta.placeholder = t(key);
     return;
   }
-  const map = {
-    learning:  { zh: '输入数学命题，AI 将分步讲解…', en: 'Enter a statement and AI will explain step-by-step…' },
-    solving:   { zh: '输入待证命题，AI 自动生成完整分步证明…', en: 'Enter a statement and AI will generate a complete proof…' },
-    searching: { zh: '输入定理关键词或自然语言查询…', en: 'Enter a theorem name or natural-language query…' },
+  const keyMap = {
+    learning:  'input.learningPlaceholder',
+    solving:   'input.solvingPlaceholder',
+    searching: 'input.searchingPlaceholder',
   };
-  ta.placeholder = map[AppState.mode]?.[AppState.lang] || t('input.placeholder');
+  ta.placeholder = keyMap[AppState.mode] ? t(keyMap[AppState.mode]) : t('input.placeholder');
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2016,73 +2088,537 @@ function smartScroll(targetEl) {
 ───────────────────────────────────────────────────────────── */
 const _WAIT_TIPS = {
   zh: [
+    // ── 功能介绍 ──
     '"问题求解"模式，专门针对研究级别的数学问题',
-    '欧拉恒等式 $e^{i\\pi}+1=0$ 将 $e$、$i$、$\\pi$、$1$、$0$ 五个最重要的数字统一在一个等式里，被许多数学家票选为"最美公式"',
+    '定理检索可以从 900 万+ 定理库中找到定理的论文来源和作者',
+    '在"证明审查"模式中上传论文 PDF，AI 会逐步独立核验论文中每个推理步骤的合法性',
     '在 Project 中上传数学文献 PDF，AI 的回答将优先参考你的知识库内容',
-    '素数有无穷多个——欧几里得的证明只用了五行，2300 年后没人找到更短的',
-    'Ramanujan 在没有正规数学教育的情况下，靠自学发现了数千个令职业数学家震惊的公式，包括对 $1/\\pi$ 的极快收敛级数',
-    '在"证明审查"模式中粘贴任意证明文本，AI 会逐步独立核验每个推理步骤的合法性',
-    'Galois 在 20 岁之前就证明了五次方程没有根式解——那是 1830 年。两天后他在决斗中去世，留下一封彻夜写成的数学信',
-    '定理检索可以从 1000 万+ 定理库中找到形式化声明及其论文来源和作者',
-    '$\\sqrt{2}$ 是无理数的证明出自古希腊，但据说最先证明这件事的人因此被扔进了海里',
-    '在 Project 里记录"开放问题"，下次打开时可以无缝接续上次的探索',
-    'Fermat 在书页空白处写道"我有一个绝妙的证明，但这里地方太小写不下"——350 年后 Wiles 才给出完整证明，用了 200 页',
+    '"证明审查"支持上传 .tex / .md 文件，可以直接审查你的 LaTeX 论文草稿',
     '上传整本教材后，在"学习模式"提问时，AI 会优先参考你上传的书中内容来回答',
+    '在 Project 里记录"开放问题"，下次打开时可以无缝接续上次的探索',
+    '将一段你不确定的证明粘贴进"证明审查"，AI 会指出每个有问题的步骤并说明原因',
+    // ── 使用技巧 ──
+    '求解完成后，悬停在 AI 回复气泡上，操作行会显示 { } LaTeX 按钮——点击即可生成可编译的 LaTeX 源码',
+    '"学习模式"生成四节内容时，可以单独点击某节标题旁的"重新生成"按钮，无需重跑整个流程',
+    '若某个定理名出现在证明中但你不确定其内容，直接在"定理检索"里粘贴这个名字，通常能立刻找到来源',
+    '知识库上传的 PDF 建议保持在 5MB 以下，过大的 PDF 可以先用 pdfcrop 或 ghostscript 拆分成章节再上传',
+    '模型下拉中"DeepSeek V4 Pro"经济实惠适合大量迭代验证，"Gemini 3.1 Pro"推理能力更强适合复杂问题的探索',
+    '问题求解的结果页右侧会出现 LaTeX 面板——点击复制后直接粘贴进 Overleaf 即可完整编译',
+    '历史会话自动保存在本地浏览器；同一问题的多次尝试会作为独立会话保存，方便对比不同证明路径',
+    '如果证明被系统"主动拒绝"（置信度极低），往往意味着命题条件有遗漏，或者是经典开放问题，可去"定理检索"验证',
+    '复杂问题先拆成 2 到 3 个引理分别提问，通常比一次要求完整证明更容易得到稳定结果',
+    '切换模型下拉，可以选择不同的 AI 来处理同一个命题，比较它们证明风格的差异',
+    '如果一个命题总是证明不顺，先去"定理检索"里查标准名称、经典等价形式或已知特例，通常能更快找到突破口',
+    '如果你在写论文，可以先让 AI 给出证明蓝图，再把关键步骤改写成你自己的记号和叙述风格',
+    '很多看似正确的命题其实只差一个条件；当系统给出反例时，最值得关注的是它暴露了哪个隐藏假设',
+    '进度条到达 100% 只代表服务器处理完成；复杂 PDF 可能需要数分钟，等待时可以翻看等待提示里的数学趣闻',
+    '在项目管理里记录每个概念的学习状态（未接触→有疑惑→已理解→已掌握），相当于搭建个人知识图谱',
+    '学习模式输出的"前置知识"节，帮助你快速判断当前命题依赖哪些已知概念，适合查漏补缺',
+    '证明审查提示"gap"的步骤，往往是逻辑跳跃最大的地方——那里通常需要补写一个引理',
+    '对于涉及分析或测度论的命题，试着先让 AI 给出直觉解释，再要求严格 $\\epsilon$-$\\delta$ 证明',
+    '使用"定理检索"时，描述尽量具体：加上字段名、边界条件或等价说法，准确率会大幅提升',
+    // ── 经典结论与数学趣味 ──
+    '欧拉恒等式 $e^{i\\pi}+1=0$ 将 $e$、$i$、$\\pi$、$1$、$0$ 五个最重要的数字统一在一个等式里，被许多数学家票选为"最美公式"',
+    '素数有无穷多个——欧几里得的证明只用了五行，2300 年后没人找到更短的',
+    '$\\sqrt{2}$ 是无理数的证明出自古希腊，但据说最先证明这件事的人因此被扔进了海里',
     '黎曼猜想说 $\\zeta(s)$ 的非平凡零点实部都是 $\\frac{1}{2}$。它成立了 160 年，没有人证明，也没有人找到反例',
     '柯尼斯堡七桥问题是图论的起点：欧拉 1736 年证明不存在一次走完所有桥的路径，顺便发明了图论',
     'Cantor 证明实数比自然数"更多"——无穷也有大小之分。这个结果让他的导师 Kronecker 震怒，称他为"腐蚀年轻人的败类"',
-    '将一段你不确定的证明粘贴进"证明审查"，AI 会指出每个有问题的步骤并说明原因',
     '哥德尔不完备定理说：任何足够强的公理系统都存在既无法证明也无法反驳的命题——包括"本系统是无矛盾的"这个命题本身',
-    '"证明审查"支持上传 .tex / .md 文件，可以直接审查你的 LaTeX 论文草稿',
     'Conway 的生命游戏只有四条规则，却能模拟自复制机器、图灵机，乃至任意计算过程',
-    '数学中的"猜想"不一定是猜测——有些猜想有数百页的计算支撑，只差最后一步严格证明',
     '三体问题没有解析解，但 Poincaré 在研究它的过程中发明了拓扑学和混沌理论——两个副产品比原问题更重要',
-    '切换模型下拉，可以选择不同的 AI 来处理同一个命题，比较它们证明风格的差异',
     'Hilbert 在 1900 年提出 23 个问题，其中 10 个至今悬而未决，包括黎曼猜想和 $P$ vs $NP$',
-    '如果一个命题总是证明不顺，先去"定理检索"里查标准名称、经典等价形式或已知特例，通常能更快找到突破口',
-    '复杂问题先拆成 2 到 3 个引理分别提问，通常比一次要求完整证明更容易得到稳定结果',
-    '在"形式化证明"模式中，系统会先搜索 mathlib4 是否已有现成定理，再尝试生成 Lean 4 代码并本地编译验证',
-    '很多看似正确的命题其实只差一个条件；当系统给出反例时，最值得关注的是它暴露了哪个隐藏假设',
     'Jordan 曲线定理听起来直观，但早期严格证明并不简单。数学里"显然"往往正是最需要小心的地方',
-    '如果你在写论文，可以先让 AI 给出证明蓝图，再把关键步骤改写成你自己的记号和叙述风格',
+    '数学中的"猜想"不一定是猜测——有些猜想有数百页的计算支撑，只差最后一步严格证明',
+    '四色定理是第一个被计算机辅助证明的重大定理（1976 年），当时许多数学家质疑这算不算"真正的证明"',
+    '巴拿赫-塔斯基悖论：可以把一个球分成有限个碎片，重新拼合成两个与原来等大的球。在现实世界当然不可能——因为用的是非可测集',
+    'Wiles 证明费马大定理时，在最后阶段发现了一个严重漏洞，他独自在楼上工作了一年多才修补好，事后说那十四个月是"他一生中最美丽的孤独时光"',
+    '质数定理说：不超过 $n$ 的素数个数约为 $n/\\ln n$。这个结果 1896 年被独立证明了两次，同一天',
+    '阿贝尔与黎曼都是年轻夭折的天才——阿贝尔 26 岁，黎曼 39 岁——数学界不止一次感叹若他们多活二十年会改写多少历史',
+    '庞加莱猜想说：每个单连通的紧致三维流形同胚于三维球面。它 1904 年被提出，2003 年由 Perelman 用黎曼流几何证明',
+    '希尔伯特旅馆悖论：一家有无穷间客房的旅馆即使客满，也能在不驱逐任何旧客的情况下接待无穷多位新客——这就是可数无穷的本质',
+    '$P$ vs $NP$ 是计算机科学最大的开放问题，千禧年大奖七题之一，奖金 100 万美元——但大多数数学家猜测 $P \\neq NP$，却无法证明',
+    '最短描述原则（柯尔莫哥洛夫复杂度）给出了"随机"的严格定义：一个字符串的复杂度是能生成它的最短程序的长度',
+    '所有大于 2 的偶数都能写成两个素数之和——这就是哥德巴赫猜想，提出于 1742 年，至今没有完整证明',
+    '连续统假设说不存在"介于可数集与实数集之间"的无穷。哥德尔（1940）和科恩（1963）分别证明它与 ZFC 的独立性：既不能被证明，也不能被否定',
+    '数学归纳法的"最强形式"是超穷归纳：对良序集上的每一个元素，证明如果在它之前的所有元素都满足性质，则它也满足——这覆盖了所有序数',
+    '调和级数 $\\sum 1/n$ 发散，但发散得极慢——加前 $10^{43}$ 项也不超过 100',
+    '欧拉常数 $\\gamma = \\lim_{n\\to\\infty}(\\sum_{k=1}^n 1/k - \\ln n) \\approx 0.5772$。没有人知道它是否是有理数',
+    '鸽巢原理是数学中看起来最平凡、实际上最强大的工具之一：$n+1$ 只鸽子住 $n$ 个巢，必有一个巢住了至少两只',
+    // ── 数学家野史 ──
+    'Ramanujan 在没有正规数学教育的情况下，靠自学发现了数千个令职业数学家震惊的公式，包括对 $1/\\pi$ 的极快收敛级数',
+    'Galois 在 20 岁之前就证明了五次方程没有根式解——那是 1830 年。两天后他在决斗中去世，留下一封彻夜写成的数学信',
+    'Fermat 在书页空白处写道"我有一个绝妙的证明，但这里地方太小写不下"——350 年后 Wiles 才给出完整证明，用了 200 页',
+    'Grothendieck 几乎凭一己之力重建了整个代数几何。1970 年他突然放弃数学，退居山林，此后再未发表论文',
+    'Perelman 证明了庞加莱猜想，拒绝了菲尔兹奖和百万美元大奖，说"宇宙比钱更有趣"',
+    'Emmy Noether 被纳粹驱逐出德国，流亡美国，她的对称-守恒定律被爱因斯坦称为"数学天才的最高成就"',
+    'Ramanujan 说他的公式是梦中女神 Namagiri 显灵赐予的；Hardy 评价他是"每个世纪诞生不超过一次的天才"',
+    'Euler 在双目失明后凭记忆口述，仍完成了约四分之一的全部科学产出——共 886 篇论文',
+    'Gauss 17 岁时用圆规和直尺作出了正 17 边形，这在此前 2000 年无人能做到；他在日记里只写了一行字："17!"',
+    'Abel 证明五次方程无根式解时只有 19 岁，随后他花钱自印论文寄给 Gauss，Gauss 将其束之高阁，Abel 26 岁死于贫困',
+    '1954 年图灵被英国政府以"严重猥亵罪"判处化学阉割，一年后去世。2009 年首相为此正式道歉',
+    'Sophie Germain 用男性笔名与 Gauss 通信多年；Gauss 得知真相后写道："一个真正懂数学的女人，这种罕见程度……"',
+    '柯西一生发表了 800 余篇论文；有段时间法国科学院每周的论文集一半以上都是他写的，最后院方不得不限制每人每次提交的篇幅',
+    '纳什因博弈论获得诺贝尔经济学奖时已在精神病院住了三十年；领奖时他说："人之所以理性，是因为他们选择了理性"',
+    'Bourbaki 是一群法国数学家用的集体笔名，没有真实存在的"尼古拉·布尔巴基"；他们重写了整个现代数学的基础',
+    'Cantor 晚年深受精神疾病困扰，多次住院；他在信中写道"我的理论不是我发明的，它们是上帝启示给我的"',
+    '笛卡儿发明坐标系的灵感据说来自病床上，他看着天花板上的一只苍蝇——想到用两个数就能精确描述它的位置',
+    '高斯的导师 Pfaff 一度认为高斯将是"我见过的有史以来最伟大的数学家"——事后他的预言被严重低估了',
+    '泰勒斯是已知最早的希腊数学家，他在埃及期间用相似三角形计算出金字塔的高度，令法老惊叹不已',
+    'Kolmogorov 8 岁时发现了等差数列前 n 项之和的公式，并将其投给了学校数学杂志；编辑回信说"我们已经知道这个了"',
+    'Archimedes 被命令不得打扰时，对前来行刑的罗马士兵说："先等我做完这道题。"——然后被杀了',
+    '莱布尼茨 1675 年在笔记本里第一次写下了 $\\int$ 这个符号；那一页纸现在保存在汉诺威图书馆',
+    '华罗庚在抗战期间辗转流离，在破旧的茅屋里完成了解析数论的多项重要工作，后来那本《堆垒素数论》被翻译成多国语言',
+    '陈景润证明了"1+2"（哥德巴赫猜想最接近完整证明的结论），据说他在狭小宿舍里不停演算，地板上铺满了草稿纸',
+    '冯·诺依曼有着超乎常人的记忆力——据说他能背诵整本电话簿，并在谈话中突然引用多年前读过的一段话',
+    '柯尼希定理在二分图中联系了最大匹配与最小顶点覆盖；它的发现者是匈牙利数学家 Kőnig Dénes，1916 年',
+    'Weil 在二战期间因拒绝服兵役被关入监狱，却在狱中写出了代数几何的奠基性工作，后来说"监狱是我工作效率最高的地方"',
+    '数学家 Paul Erdős 一生未定居，携带一只手提箱走遍全球，与 500 余位数学家合著论文，最多时一年参加 60 场研讨会',
+    // ── 数学哲学与方法论 ──
+    '"数学的本质不在于它的复杂性，而在于它如何将复杂转化为简单。" ——彭加莱',
+    '数学证明有两种风格：构造性证明给出对象本身，非构造性证明只证明它存在却无法告诉你它在哪里',
+    '一个命题"不平凡"意味着它的证明中有实质性创新——真正的工作在于找到那个关键思路',
+    '数学没有权威，只有证明。即使是最权威的数学家发表的命题，只要证明有漏洞，它就是错的',
+    '"好的数学像诗：一行抵千言，每个符号都不可缺少。" ——哈代',
+    '现代数学建立在策梅洛-弗兰克尔公理（ZFC）之上；大多数人使用的数学，可以在 ZFC 里严格推导，尽管几乎没有人真的这样做',
+    '反证法是一种优雅但有争议的技术：直觉主义者拒绝它，因为"不能不存在"不等于"存在"',
+    '类比是数学中被低估的工具——很多领域的核心定理，第一步洞见来自与另一个领域结构的深刻类比',
+    '数学证明不只是验证，它更是理解：一个好证明解释了"为什么"，一个平庸证明只告诉你"是"',
+    '"如果你找不到短证明，通常意味着你还没有真正理解这个结论。" ——这是很多数学家共同的经验',
+    '计算机辅助证明（如 Lean、Coq、Isabelle）正在改变数学验证的范式；2023 年 Lean 社区完成了 Fermat 大定理的一部分形式化',
+    '在代数中，两个看起来完全不同的结构"同构"意味着它们本质上是同一个东西——换个角度看而已',
+    '数学家用"显然"和"容易验证"时，往往是他们懒得写出来，而不是真的容易；读者应当对这两个词保持警惕',
+    '泛化（generalization）是数学的核心引擎：把一个具体结论提升为抽象结构，往往会同时解锁数十个推论',
+    '"数学的进步发生在研究边界上——那里两个不同的领域意外相遇。"——阿蒂亚爵士',
+    // ── 更多有趣结论 ──
+    '蒙提霍尔问题：三扇门后有一辆车，主持人打开了一扇有山羊的门，换门的获胜概率是 $\\frac{2}{3}$。这个反直觉结论曾引发数千封愤怒读者来信',
+    '停机问题是图灵 1936 年证明的：不存在能判断任意程序是否会停机的算法——这是计算的根本极限',
+    '生日悖论：23 个随机人中，至少两人同生日的概率超过 50%——几乎所有人第一次听到都不相信',
+    'Collatz 猜想：任取正整数，若为偶数除以 2，若为奇数乘以 3 加 1，反复执行，最终总会到达 1。没有人能证明它，也没有人找到反例',
+    '球面不能平铺到平面——这就是为什么世界地图总有变形；微分几何里的高斯绝妙定理给出了严格说明',
+    'e 的无理性比 $\\pi$ 更容易证明；$\\pi$ 和 $e$ 的"代数独立性"（即它们之间不满足任何有理系数代数方程）至今未被证明',
+    '素数间隙猜想：相邻素数之差可以任意大（例如 $n! + 2, \\ldots, n! + n$ 都是合数），但孪生素数猜想说差为 2 的素数对有无穷多个，也未被证明',
+    '图同构问题的复杂度至今不明：它既没有被证明是 P 的，也没有被证明是 NP 完全的——是理论计算机科学中极罕见的"中间状态"',
+    '最短路问题 Dijkstra 算法于 1956 年由 Dijkstra 在咖啡馆里用 20 分钟想出来，他说之所以优雅是因为"没有用纸笔推导，必须在脑子里保持简洁"',
+    '数字 1729 是"Hardy-Ramanujan 数"——它是可以用两种不同方式表达为两个立方数之和的最小数：$1^3+12^3 = 9^3+10^3$',
+    '所有凸多面体满足 $V - E + F = 2$（欧拉公式）。这是拓扑学的源头之一，也是多面体理论中被引用最多的单一结论',
+    '非欧几何的诞生打破了"公理就是真理"的观念：高斯、鲍耶、罗巴切夫斯基分别独立发现，平行公设并非必然成立',
+    '概率论的公理化直到 1933 年才由苏联数学家 Kolmogorov 完成；在此之前，"概率"只是一个直觉概念',
+    '费波那契数列 $1, 1, 2, 3, 5, 8, \\ldots$ 出现在植物的叶序、螺旋贝壳、向日葵种子排列中；相邻项之比趋向黄金比例 $\\phi$',
+    '图论中，Petersen 图是最小的 3-正则非哈密顿图，被许多图论猜想拿来当反例——它是图论界的"常见反例储备库"',
+    '球的最密堆积猜想（Kepler 1611 年提出）直到 1998 年才由 Hales 用计算机辅助证明，整个证明有 300 页 + 大量代码',
+    '测度论告诉我们：直线上的"几乎所有"实数是无理数——有理数虽然稠密，但其测度为零',
+    '代数基本定理说：每个次数 $n \\geq 1$ 的复系数多项式恰好有 $n$ 个复根（含重数）。它的证明本质上是拓扑的，不是代数的',
+    '复分析里的留数定理可以计算很多在实数范围内极难处理的积分，比如 $\\int_{-\\infty}^{\\infty} \\frac{\\sin x}{x} dx = \\pi$',
+    '集合论中的良序定理与选择公理等价——Zermelo 1904 年证明了这一点，但它的证明是非构造性的，引发了激烈争议',
+    '模运算让我们能用有限的计算处理无穷大的数，是密码学、计算机科学和数论的共同基础',
+    '李群将代数与微分几何统一：光滑对称变换构成一个群，其"切空间"（李代数）携带了几乎所有局部信息',
+    '范畴论（category theory）试图用"态射"和"函子"统一所有数学结构；有人称它为"数学的数学"，也有人戏称为"抽象废话"',
+    '谱定理告诉我们：实对称矩阵总可以被正交化对角化——量子力学的可观测量都是厄米算符，其物理意义正来自这个定理',
+    '"足够小的球"在平坦空间里是球；但在弯曲流形上，体积公式里多出了曲率修正项——这就是弯曲空间的感知方式',
+    '整数分解目前没有已知的多项式时间算法；RSA 加密的安全性正是依赖于这一点',
+    '二进制并非计算机的发明——莱布尼茨 1703 年就写了一篇论文，将二进制与中国《易经》的阴阳相对照',
+    '指数增长常常超出直觉：将一张纸对折 42 次，厚度超过月球到地球的距离',
+    '随机游走"几乎必然"在二维平面上无限次返回出发点，但在三维空间里不会——波利亚 1921 年证明了这一结果',
+    '傅里叶级数最初被用来描述热传导（1822 年），后来成为信号处理、量子力学、图像压缩的统一语言',
+    '零（0）作为独立数字的出现，是数学史上最革命性的发明之一——没有它，位值制记数法无从建立',
+    '柏拉图体只有 5 种：正四面体、正六面体、正八面体、正十二面体、正二十面体——这是欧几里得《几何原本》最后一卷的核心结论',
+    '证明两个图同构是 NP 的，但不知道是否在 P 内；图同构问题是理论计算机科学中少数几个复杂度未知的自然问题',
+    '实数轴上的康托尔集测度为零，但"不可数"——它是分形的原始雏形，自相似性的经典演示',
+    // --- 新增：数学野史与趣闻 ---
+    '图灵在二战期间破解恩尼格玛密码机，背后依赖的是"模同余"与概率推理——纯数学工具拯救了数百万生命',
+    '冯·诺依曼据说能以 20 倍速阅读书籍，并在脑中完整记忆。一次他当场口算出别人用计算机跑了 4 小时才得到的积分结果',
+    'John Nash 在 21 岁写出一页半的博士论文，奠定博弈论"纳什均衡"基础，40 年后因此获得诺贝尔经济学奖',
+    'G.H. Hardy 认为数学之美胜过一切，他把板球和数学列为人生两大乐趣，临终时说"没有任何遗憾，除了我没能证明黎曼猜想"',
+    'Cauchy 一生发表 789 篇论文，以至于巴黎科学院不得不限制每位会员每月提交的论文数量——该规定在数学圈称为"Cauchy 规则"',
+    '19 世纪末，Klein 和 Hilbert 为了谁才是哥廷根大学数学掌门人展开多年竞争；Hilbert 赢得了这场影响整个 20 世纪数学走向的争论',
+    'Dirichlet 证明等差数列中有无穷多个素数时，引入了 L-函数，开创了解析数论——他曾说"任何人都能读懂我的证明，因为我避免了无用的推广"',
+    '拓扑学家 Thurston 将几何化猜想（Poincaré 猜想的推广）作为他的研究纲领，他那篇论文改变了低维拓扑格局，但直到 Perelman 才完成证明',
+    '张益唐 2013 年发表孪生素数界的突破性结果时，他已 58 岁，在大学里教了多年基础微积分；投稿前没有告诉任何人',
+    'Langlands 纲领被称为"数学大统一理论"，连接数论、代数几何与表示论，至今仍是数学最前沿的研究方向之一',
+    'Srinivasa Ramanujan 在 1918 年发现了 $\\tau$ 函数的乘性，这成为自守形式现代理论的起点——他靠直觉看到的结论，数学家花了几十年才证明',
+    'Atiyah-Singer 指标定理统一了分析学与拓扑学，被称为"20 世纪最伟大的数学定理之一"，连接了算子的解析性质和流形的拓扑不变量',
+    '罗素悖论（1901）让弗雷格的《算术基础》在付印前崩溃：弗雷格收到罗素的信后，在书的附录中写道"没有什么比发现自己的工作基础动摇更令人不快的了"',
+    '费马数 $F_n = 2^{2^n}+1$：费马猜测它们全是素数，但 Euler 1732 年发现 $F_5$ 是合数；至今没有发现第 5 个之后的费马素数',
+    '数学归纳法实际上比很多人想象的更微妙：它等价于自然数的良序性，而良序性本身等价于选择公理的一个弱形式',
+    '海王星的发现完全靠数学：Adams 和 Leverrier 各自独立，仅凭天王星的轨道摄动，就用笔和纸算出了一颗未知行星的位置',
+    '希尔伯特曾预言"没有无解的问题"，并以此激励哥廷根数学院；1931 年哥德尔不完备定理发表，直接回答了他的信念——有些问题在当前公理系统内永远无解',
+    'Weyl 在量子力学的数学化中引入了群表示论，他说："理解物理，最终意味着找到它背后的群结构"',
+    '英国数学家 Littlewood 与 Hardy 合作写了近 100 篇论文，却从未同时出现在同一个房间——他们通过信件协作，并约定可以完全无视对方的错误',
+    '庞加莱猜想提出时（1904），人们以为这是个简单问题；它最终成为七大千禧年问题中唯一被解决的，而解决者 Perelman 拒绝了 100 万美元奖金',
+    '莫比乌斯带（1858）不是 Möbius 首先发现的——Listing 独立地、更早地描述了同样的结构，数学命名并不总是最公平的',
+    '代数拓扑中，基本群的概念由庞加莱引入；他注意到一个空间的"环路不能连续收缩"这一直觉，最终演变成了同伦论整个领域',
+    '素数定理（$\\pi(n) \\sim n/\\ln n$）的两个独立证明者 Hadamard 和 de la Vallée-Poussin 分别活到了 97 岁和 95 岁，被数学圈调侃为"证明了素数定理可以长寿"',
+    '数学中的"猜想"一旦被证明，通常立刻改名为"定理"——但有些习惯性叫法沿用至今，如费马大定理在被证明前 357 年都被称为"猜想"',
+    'Gowers 用傅里叶分析证明了 Szemerédi 定理的定量版本，顺带发展出"高阶傅里叶分析"——他说这是他做过的最困难也最愉快的数学',
+    '数学中的"错误证明"有时候反而更有价值：Lamé 和 Cauchy 各自宣布证明了费马大定理，但 Kummer 指出了致命错误，由此引入了"理想数"理论，成为代数数论的基石',
+    '20 世纪数学最重要的会议之一：1900 年巴黎国际数学家大会，Hilbert 提出 23 个问题，引导了整整一个世纪的研究方向',
+    // --- 新增：产品使用技巧 ---
+    '"定理搜索"支持中英文混合查询——比如输入"紧集上连续函数有界 compact"可以同时匹配中英文来源',
+    '在"学习模式"中，可以先输入一个宽泛的数学概念（如"测度论基础"），系统会自动拆解为若干子主题逐一展开',
+    '"证明审查"模式支持上传 .tex 文件，如果你的 LaTeX 草稿还不能编译，可以直接粘贴 \\begin{proof}...\\end{proof} 片段',
+    '每次对话都会保存在历史记录中，点击侧边栏可以随时回顾——包括完整的证明过程和 LaTeX 源码',
+    '设置面板中可以随时切换 LLM 提供商；如果 Gemini 响应较慢，可切换到 DeepSeek，通常能加快响应速度',
+    '"定理搜索"的结果卡片上有来源链接，点击可直达 arXiv 原文或 Stacks Project 对应页面，方便深度阅读',
+    '问题求解后，每个回复气泡右下角都有 { } 按钮，可以将该条自然语言证明单独转换为 LaTeX，无需重新求解',
+    '"证明审查"可以设置审查重点：在上传 PDF 时，在文本框中写明"重点检查第 3 节引理"，AI 会优先关注该部分',
+    '如果 LaTeX 输出中的公式显示异常，可以将代码复制到 Overleaf 或本地 TeX 编辑器进行完整渲染和检查',
+    '学习模式下，可以点击任一小节旁的"重新生成"按钮，只重新生成该节内容，不影响其他部分——适合针对性改进',
+    '使用"定理搜索"时，描述越具体效果越好——"连续函数在紧集上一致连续"比"连续函数性质"精确得多',
+    '系统支持 OpenAI 兼容的任意 API 中转站，在设置中填入 Base URL 即可，无需修改任何代码',
+    // --- 新增：数学思想与名言 ---
+    '"数学是上帝书写宇宙时使用的语言。" —— 伽利略',
+    '"数学的本质在于它的自由。" —— 康托尔',
+    '"没有什么比一个好的证明更令人满足的了，不是因为它的正确，而是因为它的美。" —— 哈代',
+    '"数学家不是发明数学，而是发现它。" —— 哈代（柏拉图主义的经典表述）',
+    '"对于大多数人来说，数学是一种工具；对于数学家来说，工具本身就是目的。" —— 冯·诺依曼',
+    '"好的数学就像好的诗歌：最少的字，最深的意。" ——（数学圈流传的说法）',
+    '"一个数学定理应该像一颗钻石：切割越精确，光芒越璀璨。" —— 波利亚',
+    '"直觉是数学发现的源头，严格性是数学证明的保障，二者缺一不可。" —— 庞加莱',
+    '"我们通过证明了解真理，但通过直觉发现真理。" —— 庞加莱',
+    '"提出正确的问题，比回答问题更难。" —— 康托尔（也被其他数学家引用）',
+    '"证明是使数学家信服的艺术。" —— 保罗·哈尔莫斯',
+    '"真正的数学家不该害怕愚蠢的问题。" —— 保罗·埃尔德什',
+    '"数学的进步依赖于两种力量：泛化的冲动和对具体例子的热爱。" —— 冯·诺依曼',
+    // --- 新增：数学有趣知识 ---
+    '质数 41 有一个神奇性质：$n^2 + n + 41$ 对 $n = 0, 1, \\ldots, 39$ 全都是质数——但 $n = 40$ 时结果是 $40^2 + 40 + 41 = 41^2$，不再是质数',
+    '巴拿赫-塔斯基悖论在 $\\mathbb{R}^2$ 中不成立，因为平面圆盘不能被分解成有限个片段再拼成两个相同的圆盘——悖论依赖于三维旋转群的特殊性质',
+    '四色定理（1976）是计算机辅助证明的先驱，程序需要检查 1936 个约化构型；直到 2005 年才有人给出了更简洁的（但仍需计算机的）形式化验证',
+    '整数分拆中，将 $n$ 分拆为奇数之和的方案数等于分拆为互不相同整数之和的方案数——这是欧拉发现的一个优雅双射',
+    '代数中的"幺半群"这个名字来自法语 monoïde，由数学家 Bourbaki 组的成员创造——Bourbaki 学派因发明了大量数学术语而闻名（也被调侃）',
+    '调和级数 $1 + 1/2 + 1/3 + \\ldots$ 发散极其缓慢，前一百万项之和约为 14.4，前 $10^{43}$ 项之和才超过 100',
+    '傅里叶变换最初是为了解热传导方程，但现在它存在于 MRI 成像、MP3 压缩、地震分析、股票预测——几乎所有需要分解频率的领域',
+    '数学中有一类"超越数"，它们不是任何有理系数多项式的根。虽然几乎所有实数都是超越数，但证明一个具体的数是超越的通常极其困难',
+    '1+2+3+... 的"和"被正则化为 $-1/12$ 不是通常意义的求和，而是 Ramanujan 求和或黎曼 $\\zeta$ 函数在 $s=-1$ 处的解析延拓值',
+    '线性代数中，矩阵乘法不满足交换律，但行列式满足：$\\det(AB) = \\det(A)\\det(B)$——这个等式在高维空间里意味着"体积的缩放可以分步计算"',
+    '连续统假设（CH）说 $\\aleph_0$（可数无穷）和 $2^{\\aleph_0}$（实数基数）之间没有中间基数；哥德尔（1940）和科恩（1963）分别证明 CH 在 ZFC 中既不能被证明也不能被否定',
+    'Ramsey 理论说：足够大的结构中必然存在有序子结构。最著名的例子是 $R(3,3)=6$：6 人中必有 3 人互相认识或互相不认识',
+    '拓扑学中，咖啡杯和甜甜圈"同胚"——可以连续变形为对方而不撕裂或粘合。这是因为两者都只有一个"洞"（亏格为 1）',
+    '复数的引入并非为了美观，而是为了求三次方程的实数根——16 世纪意大利数学家卡尔达诺发现，即使最终答案是实数，中间步骤也必须经过复数',
+    '哥德巴赫猜想至今未证：每个大于 2 的偶数都能写成两个素数之和。已通过计算机验证到 $4 \\times 10^{18}$，却仍无一般性证明',
+    '"非欧几何"的发现让数学家意识到公理系统可以有多个不同的"实现"——这一认识后来发展成了现代数学的公理化方法和模型论',
+    '密码学中的椭圆曲线（ECC）利用了椭圆曲线群上的离散对数难题；Bitcoin 的签名算法 secp256k1 就是一条精心选择的椭圆曲线',
+    '数学中有些定理的证明长达数百页甚至数千页，比如有限单群分类定理总长超过 10000 页，由数十位数学家历经数十年完成',
+    '蒙提霍尔问题（三门问题）之所以出名，是因为连美国顶尖数学家收到玛丽莲的解答后也写信反对——直到计算机模拟彻底说服了他们',
+    // --- 补充至 225+ ---
+    '数学中的"对偶"思想无处不在：线性代数里向量与对偶空间，拓扑里开集与闭集，逻辑里 AND 与 OR——找到对偶往往意味着获得"免费"的另一个定理',
+    '微积分基本定理揭示了微分与积分互为逆运算，这一发现使得牛顿和莱布尼茨几乎同时建立了微积分，也引发了史上最著名的优先权之争',
+    'Cauchy 不等式 $|\\langle u, v \\rangle|^2 \\leq \\langle u,u \\rangle \\langle v,v \\rangle$ 在内积空间中成立，它是物理中不确定性原理的数学根源',
+    '格罗滕迪克在其自传《收获与播种》中描述了 12 个他认为改变了数学的思想，其中"拓扑斯"和"动机"理论至今仍是研究前沿',
+    '泰勒展开将无穷可微函数表示为幂级数——这一工具不仅是分析的核心，也是物理学中"小角近似"等工程方法的严格基础',
+    '数学里的"同构"和"等价"是截然不同的概念：同构保留所有结构，等价只保留某些性质——区分清楚这两者，可以避免很多混乱',
+    'Stirling 公式 $n! \\approx \\sqrt{2\\pi n}(n/e)^n$ 让人们在计算大阶乘时无需逐步相乘，广泛用于概率论、统计物理和算法复杂度分析',
+    '1637 年笛卡尔引入坐标系，将几何问题翻译成代数方程——这是数学史上最具影响力的"语言转换"之一，直接推动了解析几何的诞生',
+    '波利亚的《怎样解题》（1945）归纳了解题的四步法：理解问题、制定计划、执行计划、回顾反思——至今仍是数学教育的经典参考书',
+    '整个实分析建立在"完备性"之上：实数的完备性意味着柯西列必收敛，这一性质使得极限、微积分的严格化成为可能',
+    'RSA 加密的安全性依赖大整数分解的困难——而 Shor 算法（1994）表明量子计算机可以高效分解大整数，一旦实用化将使 RSA 失效',
+    '凸优化在机器学习中无处不在：支持向量机（SVM）的训练本质上是一个凸二次规划问题，这保证了全局最优解的存在性和唯一性',
+    '数列 $1, 1/2, 1/4, 1/8, \\ldots$ 的无穷和为 $2$——这让古代哲学家困惑了几个世纪（芝诺悖论），而严格的极限理论在 19 世纪才给出了令人信服的解答',
+    '无穷大的"大小"有层次：$\\aleph_0 < 2^{\\aleph_0} < 2^{2^{\\aleph_0}} < \\ldots$，这个无穷层次结构由康托尔发现，打破了"无穷只有一种"的直觉',
+    '数学中的美学标准之一是"证明的长度"——一个一行的证明往往比一个三十页的证明更受推崇，即使两者都正确',
+    '拉格朗日乘数法允许我们在约束条件下求极值，它将有约束优化问题转化为求一个扩展函数的无约束极值，是工程与经济学中的核心工具',
+    '"结构上的相似"是数学发展的驱动力——环、域、群的定义抽象了数字运算的本质，使得同一套理论可以同时适用于整数、多项式和旋转变换',
+    '数学证明中"构造性"与"非构造性"的区别：构造性证明给出一个具体的对象，非构造性证明（如反证法）只证明存在性却不给出构造——两派数学家至今仍有争论',
+    '实变函数中 Lebesgue 积分取代 Riemann 积分的关键优势：它能处理 Riemann 积分无法定义的函数（如处处不连续的 Dirichlet 函数），并满足更好的极限定理',
+    '庞加莱回归定理：在某些动力系统中，几乎所有轨道都会无限次地回到起点附近——这意味着一个封闭的物理系统在足够长时间后会"几乎"回到初始状态',
+    '"问题求解"模式可以处理多步骤证明；如果某一步你已知，可以在输入中明确说明"假设引理 X 成立"，AI 会以此为基础继续推导',
+    '我爱数学，这就是我为什么开发 vibe_proving。',
   ],
   en: [
+    // ── Feature introductions ──
     '"Problem Solving" mode is designed for research-level mathematical questions',
-    'Euler\'s identity $e^{i\\pi}+1=0$ unites the five most fundamental numbers in mathematics — voted the "most beautiful formula" by generations of mathematicians',
-    'Upload math papers to your Project and the AI will prioritize your knowledge base when answering',
-    'Euclid\'s proof of infinitely many primes fits in five lines and is unchanged after 2300 years',
-    'Ramanujan discovered thousands of formulas — including a remarkably fast series for $1/\\pi$ — with no formal training, teaching himself from a single borrowed textbook',
+    'Theorem Search queries 9M+ theorems and returns real paper sources, authors, and links',
     'Paste any proof into "Proof Review"; the AI verifies each logical step independently, without seeing the author\'s reasoning',
-    'Galois proved the quintic has no radical solution before age 20. He spent his last night writing mathematics before dying in a duel at 21',
-    'Theorem Search queries 10M+ theorems and returns real paper sources, authors, and links',
-    'The irrationality of $\\sqrt{2}$ was discovered by ancient Greeks — and legend says the first person to prove it was drowned for revealing the secret',
-    'Log "Open Questions" in your Project to resume complex investigations across multiple sessions',
-    'Fermat wrote: "I have a truly marvelous proof, but this margin is too small to contain it." It took 350 years and 200 pages to settle',
+    'Upload math papers to your Project and the AI will prioritize your knowledge base when answering',
+    '"Proof Review" supports uploading .tex / .md files, so you can review a LaTeX paper draft directly',
+    'In "Formalization" mode, the system first searches mathlib4 for an existing theorem, then tries to generate Lean 4 code and verify it with local compilation',
     'After uploading a textbook, Learning Mode will prioritize your uploaded material when explaining theorems',
+    'Log "Open Questions" in your Project to resume complex investigations across multiple sessions',
+    'Paste a proof you\'re unsure about into "Proof Review" — the AI will pinpoint exactly which steps are unjustified',
+    // ── Usage tips ──
+    'After a proof streams in, hover over the AI bubble — a { } LaTeX button appears in the action bar. Click it to generate compilable LaTeX source code',
+    'In Learning Mode, click "Regenerate" next to any section header to regenerate just that section — no need to re-run the full flow',
+    'If a theorem name appears in a proof but you are unsure of its content, paste the name into "Theorem Search" — it usually returns the source immediately',
+    'For PDF knowledge-base uploads, files under 5 MB work best; larger PDFs can be split by chapter using pdfcrop or ghostscript before uploading',
+    'DeepSeek in the model dropdown is cost-efficient for iterative verification; Gemini excels at exploratory reasoning for complex conjectures',
+    'The LaTeX panel appears on the right side of a solve result — copy and paste directly into Overleaf for a fully compilable document',
+    'Past sessions are saved locally in the browser; multiple attempts at the same problem are stored as separate sessions for easy comparison of proof paths',
+    'Formalization first queries mathlib4 — if a matching theorem exists it returns Lean 4 code immediately; generation only starts if no match is found',
+    'If the solver "actively refuses" (very low confidence), it usually means a hypothesis is missing or the statement is a known open problem — check "Theorem Search" to confirm',
+    'For difficult problems, splitting the task into 2 or 3 lemmas usually works better than asking for a complete proof in one shot',
+    'Try different models from the dropdown on the same statement — their proof styles can vary dramatically',
+    'If a statement keeps resisting proof, check "Theorem Search" for its standard name, classical equivalent forms, or known special cases — that often reveals the right entry point',
+    'If you are writing a paper, you can first ask the AI for a proof blueprint, then rewrite the key steps in your own notation and expository style',
+    'Many statements that look true are missing exactly one condition; when the system finds a counterexample, the real value is seeing which hidden assumption failed',
+    'The progress bar reaching 100% means the server finished processing; complex PDFs can take several minutes — the trivia tips keep you company',
+    'Track each concept\'s learning state in Project Management (Unseen → Confused → Understood → Mastered) to build your own knowledge graph',
+    'The "Prerequisites" section in Learning Mode gives you a quick checklist of what you need to know before the current proof — ideal for identifying gaps',
+    'A step flagged as a "gap" in Proof Review is usually where the logical leap is largest — that\'s where a new lemma is most needed',
+    'For analysis or measure-theory statements, try asking for the intuition first, then request a rigorous $\\epsilon$-$\\delta$ proof as a second step',
+    'In Theorem Search, describe concretely: add field names, boundary conditions, or equivalent formulations — it dramatically improves accuracy',
+    // ── Classical results and math trivia ──
+    'Euler\'s identity $e^{i\\pi}+1=0$ unites the five most fundamental numbers in mathematics — voted the "most beautiful formula" by generations of mathematicians',
+    'Euclid\'s proof of infinitely many primes fits in five lines and is unchanged after 2300 years',
+    'The irrationality of $\\sqrt{2}$ was discovered by ancient Greeks — and legend says the first person to prove it was drowned for revealing the secret',
     'The Riemann Hypothesis says all non-trivial zeros of $\\zeta(s)$ have real part $\\frac{1}{2}$. It has stood for 160 years with no proof and no counterexample',
     'The Königsberg bridge problem launched graph theory: Euler proved in 1736 that no single path crosses each bridge exactly once — and invented a new field in the process',
     'Cantor proved that some infinities are larger than others. His mentor Kronecker called him "a corrupter of youth." History sided with Cantor',
-    'Paste a proof you\'re unsure about into "Proof Review" — the AI will pinpoint exactly which steps are unjustified',
     'Gödel\'s incompleteness theorem: any sufficiently powerful system contains true statements it cannot prove — including the statement "this system is consistent"',
-    '"Proof Review" supports uploading .tex / .md files, so you can review a LaTeX paper draft directly',
     'Conway\'s Game of Life has four rules and can simulate self-replicating machines, Turing machines, and arbitrary computation',
-    'A "conjecture" in mathematics isn\'t just a guess — some have hundreds of pages of supporting computation, waiting only for the final rigorous proof',
     'The three-body problem has no closed-form solution, but Poincaré invented topology and chaos theory while failing to solve it — better side effects than the original goal',
-    'Try different models from the dropdown on the same statement — their proof styles can vary dramatically',
     'Hilbert\'s 23 Problems from 1900: 10 remain unsolved, including the Riemann Hypothesis and $P$ vs $NP$',
-    'If a statement keeps resisting proof, check "Theorem Search" for its standard name, classical equivalent forms, or known special cases — that often reveals the right entry point',
-    'For difficult problems, splitting the task into 2 or 3 lemmas usually works better than asking for a complete proof in one shot',
-    'In "Formalization" mode, the system first searches mathlib4 for an existing theorem, then tries to generate Lean 4 code and verify it with local compilation',
-    'Many statements that look true are missing exactly one condition; when the system finds a counterexample, the real value is seeing which hidden assumption failed',
     'The Jordan curve theorem sounds intuitive, but early fully rigorous proofs were far from trivial. In mathematics, "obvious" is often where extra care is needed',
-    'If you are writing a paper, you can first ask the AI for a proof blueprint, then rewrite the key steps in your own notation and expository style',
+    'A "conjecture" in mathematics isn\'t just a guess — some have hundreds of pages of supporting computation, waiting only for the final rigorous proof',
+    'The four-color theorem was the first major result proved with computer assistance (1976). Many mathematicians debated whether that could count as a "real proof"',
+    'The Banach-Tarski paradox: a single ball can be decomposed into finitely many pieces and reassembled into two balls identical to the original — impossible in practice because it uses non-measurable sets',
+    'Wiles found a serious gap in his proof of Fermat\'s Last Theorem at the last stage and spent over a year alone repairing it. He later called those fourteen months "the most beautiful solitude of my life"',
+    'The prime number theorem — approximately $n/\\ln n$ primes up to $n$ — was proved independently by two people on the same day in 1896',
+    'Both Abel and Riemann died young — Abel at 26, Riemann at 39. Mathematicians have long wondered what further landscapes they would have opened had they lived another twenty years',
+    'The Poincaré conjecture — every simply-connected compact 3-manifold is homeomorphic to the 3-sphere — was stated in 1904 and proved by Perelman in 2003 using Ricci flow with surgery',
+    'Hilbert\'s Hotel: an infinite hotel, fully occupied, can still accommodate infinitely many new guests — that is the essence of countable infinity',
+    '$P$ vs $NP$ is one of the Millennium Prize Problems with a $1 million reward. Most mathematicians believe $P \\neq NP$, but no one can prove it',
+    'Kolmogorov complexity gives a rigorous definition of randomness: the complexity of a string is the length of the shortest program that produces it',
+    'Every even integer greater than 2 is conjectured to be the sum of two primes — Goldbach\'s conjecture, proposed in 1742, still unproven',
+    'The Continuum Hypothesis — no set has cardinality strictly between the naturals and the reals — is independent of ZFC: both it and its negation are consistent with the axioms',
+    'The harmonic series $\\sum 1/n$ diverges, but so slowly that summing the first $10^{43}$ terms still does not exceed 100',
+    'The Euler–Mascheroni constant $\\gamma \\approx 0.5772$ is the limit of $\\sum_{k=1}^n 1/k - \\ln n$. Nobody knows if it is rational or irrational',
+    'The pigeonhole principle — $n+1$ pigeons in $n$ holes means at least one hole has two — is one of the most elementary yet powerful tools in combinatorics',
+    // ── Mathematicians' stories ──
+    'Ramanujan discovered thousands of formulas — including a remarkably fast series for $1/\\pi$ — with no formal training, teaching himself from a single borrowed textbook',
+    'Galois proved the quintic has no radical solution before age 20. He spent his last night writing mathematics before dying in a duel at 21',
+    'Fermat wrote: "I have a truly marvelous proof, but this margin is too small to contain it." It took 350 years and 200 pages to settle',
+    'Grothendieck almost single-handedly rebuilt the foundations of algebraic geometry. In 1970 he abruptly abandoned mathematics and retreated to a mountain village, publishing nothing thereafter',
+    'Perelman proved the Poincaré conjecture, then declined both the Fields Medal and $1 million prize, saying "the universe is more interesting than money"',
+    'Emmy Noether was expelled from Germany by the Nazis; Einstein called her theorem linking symmetry and conservation laws "the most significant creative mathematical genius thus far produced"',
+    'Ramanujan claimed his formulas were revealed to him in dreams by a goddess. Hardy called him "a mathematician of the highest quality, a man in whose work there is a unique element of the truly marvelous"',
+    'Euler lost sight in both eyes yet dictated roughly a quarter of his entire output — 886 papers — from memory alone',
+    'At 17, Gauss constructed a regular 17-gon with compass and straightedge — a feat no one had achieved in 2000 years. His diary entry read simply: "17!"',
+    'Abel proved the quintic unsolvable at 19, self-printed his paper and sent it to Gauss — who never opened it. Abel died in poverty at 26',
+    'Alan Turing was prosecuted for "gross indecency" in 1952 and subjected to chemical castration. The British Prime Minister issued a formal apology in 2009',
+    'Sophie Germain corresponded with Gauss under a male pseudonym for years. When Gauss learned the truth, he wrote that her "rare courage" had earned her "the most eminent rank"',
+    'Cauchy published over 800 papers; at one point he submitted so many that the French Academy had to cap individual submissions per issue to make room for others',
+    'Nash won the Nobel Prize in Economics after thirty years in a psychiatric institution. At the ceremony he said: "To be rational is a choice"',
+    'Bourbaki is the collective pseudonym of a group of French mathematicians. There is no real Nicolas Bourbaki — they rewrote the foundations of modern mathematics under a fictional identity',
+    'Cantor suffered repeated mental breakdowns in his later years. He wrote in letters: "My theory was not invented by me — it was revealed to me by God"',
+    'Descartes\' idea of coordinates is said to have come to him while lying ill, watching a fly on the ceiling: he realized two numbers could pinpoint its exact location',
+    'Kolmogorov solved three classic problems by age 19 and submitted one paper to a journal as a schoolboy. The editor replied: "We already know this." He later founded modern probability theory',
+    'Archimedes, told not to disturb his circles, said to the Roman soldier sent to execute him: "Please wait until I finish this proof." He was killed immediately after',
+    'Leibniz wrote the symbol $\\int$ for the first time in a notebook on 29 October 1675. That page is preserved in the Hanover library',
+    'Von Neumann\'s memory was legendary — he could reportedly recite entire phone books and spontaneously quote a passage read years earlier in the middle of conversation',
+    'Paul Erdős never had a permanent home, traveled the world with a single suitcase, and co-authored papers with over 500 mathematicians — at his peak, 60 conferences in a single year',
+    'André Weil wrote some of his most foundational algebraic-geometry papers while imprisoned for refusing military service in WWII. He later said prison had been his most productive working environment',
+    'The number 1729 — the Hardy–Ramanujan number — is the smallest expressible as the sum of two positive cubes in two different ways: $1^3 + 12^3 = 9^3 + 10^3$',
+    // ── Philosophy and methodology ──
+    '"The essence of mathematics lies in its freedom." — Cantor',
+    'There are two flavors of proof: a constructive proof exhibits the object, a non-constructive proof only guarantees existence without showing how to find it',
+    'Mathematics has no authority — only proofs. Even the most celebrated mathematician\'s theorem is wrong if the proof has a gap',
+    '"Good mathematics is like poetry: one line outweighs a thousand words, and every symbol is indispensable." — Hardy',
+    'Proof by contradiction is elegant but contested: constructivists reject it, since "cannot not exist" does not equal "exists"',
+    'Analogy is one of mathematics\' most underrated tools — many of the core theorems in a field were first glimpsed through a deep structural parallel with another field',
+    'A proof is not merely verification; it is understanding. A good proof explains the *why*, not just the *that*',
+    '"If you can\'t find a short proof, you probably haven\'t understood the result yet." — a maxim shared by many working mathematicians',
+    'Computer-assisted proofs (Lean, Coq, Isabelle) are reshaping mathematical verification; in 2023 the Lean community completed a formal verification of parts of the proof of Fermat\'s Last Theorem',
+    'Two algebraic structures that are "isomorphic" are essentially the same object — just viewed from a different angle',
+    'When mathematicians write "obvious" or "clearly", it usually means they are too tired to write it out — readers should treat these words as red flags',
+    'Generalization is the central engine of mathematics: lifting a concrete result to an abstract structure often unlocks dozens of corollaries at once',
+    '"Progress in mathematics happens at the boundary — where two different fields unexpectedly meet." — Sir Michael Atiyah',
+    // ── More beautiful results ──
+    'The Monty Hall problem: three doors, one car; the host opens a goat door; switching wins with probability $\\frac{2}{3}$. This counterintuitive result provoked thousands of angry letters when first published',
+    'The halting problem — proved by Turing in 1936 — shows no algorithm can decide whether an arbitrary program halts. This is a fundamental limit of computation itself',
+    'The birthday paradox: among just 23 randomly chosen people, the probability that two share a birthday exceeds 50% — almost nobody believes this at first',
+    'The Collatz conjecture: take any positive integer; if even, halve it; if odd, multiply by 3 and add 1; repeat. It always reaches 1 — or so it seems. No proof exists, and no counterexample has been found',
+    'A sphere cannot be flattened onto a plane without distortion — this is why every world map is inaccurate. Gauss\'s Theorema Egregium makes this rigorous',
+    'The irrationality of $e$ is easy to prove; the "algebraic independence" of $\\pi$ and $e$ (no algebraic relation with rational coefficients between them) remains unproved',
+    'The twin prime conjecture — infinitely many pairs of primes differing by 2 — remains open, though in 2013 Zhang Yitang proved there exist infinitely many prime pairs with gap less than 70 million',
+    'Graph isomorphism is in NP but not known to be either in P or NP-complete — one of the very few natural problems whose complexity class is genuinely unknown',
+    'Dijkstra invented his shortest-path algorithm in a coffee shop in 20 minutes, deliberately working without pen and paper to keep it clean. He published it in 1959 in a three-page paper',
+    'Every convex polyhedron satisfies $V - E + F = 2$ (Euler\'s formula) — one of the most-cited single results in topology and the seed of an entire field',
+    'Non-Euclidean geometry shattered the idea that axioms are self-evident truths: Gauss, Bolyai, and Lobachevsky independently discovered that the parallel postulate need not hold',
+    'Probability theory was not axiomatized until 1933, when Kolmogorov placed it on a rigorous measure-theoretic foundation. Before that, "probability" was purely intuitive',
+    'The Fibonacci sequence $1, 1, 2, 3, 5, 8, \\ldots$ appears in phyllotaxis, spiral shells, and sunflower seed arrangements; ratios of consecutive terms converge to the golden ratio $\\phi$',
+    'The sphere-packing conjecture (Kepler 1611) was settled in 1998 by Hales using computer assistance — the proof runs to 300 pages plus extensive code',
+    'Measure theory reveals that "almost all" real numbers on the number line are irrational — the rationals, though dense, have measure zero',
+    'The fundamental theorem of algebra says every degree-$n$ polynomial over $\\mathbb{C}$ has exactly $n$ roots (with multiplicity). Its proof is essentially topological, not algebraic',
+    'The residue theorem in complex analysis lets us evaluate many real integrals that are intractable otherwise — for instance, $\\int_{-\\infty}^{\\infty} \\frac{\\sin x}{x}\\,dx = \\pi$',
+    'The well-ordering theorem is equivalent to the axiom of choice — proved by Zermelo in 1904 via a non-constructive argument that sparked fierce controversy',
+    'Modular arithmetic lets finite computation handle arbitrarily large numbers; it underlies cryptography, computer science, and number theory simultaneously',
+    'Lie groups unify algebra and differential geometry: smooth symmetry transformations form a group whose "tangent space" (the Lie algebra) encodes almost all local structure',
+    'Category theory tries to unify all mathematical structures via "morphisms" and "functors". Some call it "the mathematics of mathematics"; others jokingly call it "abstract nonsense"',
+    'The spectral theorem says every real symmetric matrix can be orthogonally diagonalized — quantum mechanics inherits this directly: all observables are Hermitian operators',
+    'Integer factorization has no known polynomial-time algorithm — the security of RSA encryption rests entirely on this computational gap',
+    'Binary representation was not invented by computers — Leibniz wrote a paper in 1703 connecting binary notation to the yin-yang duality of the I Ching',
+    'Exponential growth defeats intuition: fold a sheet of paper 42 times and the stack would reach from Earth to the Moon',
+    'A 2D random walk returns to its starting point with probability 1 (Pólya 1921), but a 3D random walk escapes to infinity with positive probability — dimension changes everything',
+    'Fourier series were invented to solve heat equations (1822) and became the shared language of signal processing, quantum mechanics, and image compression',
+    'Zero as an independent numeral is one of the most revolutionary inventions in mathematical history — without it, positional notation is impossible',
+    'The five Platonic solids are the only regular convex polyhedra in three dimensions: tetrahedron, cube, octahedron, dodecahedron, icosahedron — the climax of Euclid\'s Elements',
+    'The Cantor set has measure zero but is uncountable — the original fractal, a perfect demonstration of self-similarity long before "fractal" was a word',
+    'The Collatz conjecture has been verified computationally for all integers up to $2^{68}$, yet remains completely unproved — a humbling reminder that patterns can mislead',
+    'Knot theory, which classifies mathematical knots up to isotopy, unexpectedly became a powerful tool in molecular biology — DNA supercoiling is essentially a knot theory problem',
+    // --- New: Math history & anecdotes ---
+    'Alan Turing\'s codebreaking at Bletchley Park relied on modular arithmetic and probabilistic reasoning — pure mathematics saved millions of lives in WWII',
+    'John von Neumann could read books at 20× speed and recall them verbatim. He once mentally solved in minutes an integral that had taken a computer four hours to evaluate',
+    'John Nash\'s doctoral thesis — just one and a half pages — established the Nash equilibrium concept at age 21; forty years later it earned him the Nobel Prize in Economics',
+    'G.H. Hardy listed cricket and mathematics as his two great loves; on his deathbed he said he had no regrets, except for never having proved the Riemann hypothesis',
+    'Cauchy published 789 papers in his lifetime, forcing the Paris Academy to impose a monthly submission limit — a rule still called the "Cauchy rule" in mathematical circles',
+    'Dirichlet introduced L-functions to prove infinitely many primes in arithmetic progressions, pioneering analytic number theory. He once said: "anyone can follow my proofs because I avoid useless generality"',
+    'Thurston\'s geometrization programme — a vast extension of Poincaré\'s conjecture — reshaped low-dimensional topology; Perelman completed the proof four decades later',
+    'Yitang Zhang published his breakthrough on bounded prime gaps in 2013 at age 58, after years teaching freshman calculus. He told no one before submitting',
+    'The Langlands programme, connecting number theory, algebraic geometry and representation theory, is sometimes called "the grand unified theory of mathematics"',
+    'Ramanujan\'s discovery of the multiplicativity of the tau function in 1918 seeded the modern theory of automorphic forms — his intuition outpaced formal proof by decades',
+    'The Atiyah–Singer index theorem unifies analysis and topology by linking the analytic index of an elliptic operator to the topological invariants of the underlying manifold',
+    'Russell\'s paradox (1901) shattered Frege\'s Foundations of Arithmetic before it was even printed; Frege wrote in an appendix: "Nothing is more unwelcome than to find the foundations shaking"',
+    'Fermat numbers $F_n = 2^{2^n}+1$: Fermat conjectured they were all prime, but Euler found $F_5$ is composite in 1732; no prime Fermat number beyond $F_4$ has been found since',
+    'Mathematical induction is subtler than it looks: it is equivalent to the well-ordering of the natural numbers, which is in turn equivalent to a weak form of the axiom of choice',
+    'Neptune was discovered entirely by mathematics: Adams and Leverrier independently predicted its position from perturbations in Uranus\'s orbit, using only pen, paper, and Newton\'s laws',
+    'Hilbert declared "there are no unsolvable problems" — Gödel\'s incompleteness theorems (1931) answered him directly: some problems can never be resolved within a given axiomatic system',
+    'Weyl introduced group representation theory into quantum mechanics and said: "to understand physics ultimately means to find the group structure behind it"',
+    'Hardy and Littlewood wrote nearly 100 joint papers yet rarely appeared in the same room — they collaborated entirely by letter, with a rule allowing each to completely ignore the other\'s mistakes',
+    'The Poincaré conjecture was considered easy at first; it became the only one of the seven Millennium Problems to be solved — and the solver, Perelman, declined the $1 million prize',
+    'The Möbius strip was independently discovered by Listing (earlier) and Möbius; Möbius got the name. Mathematical naming is not always fair',
+    'The two independent provers of the Prime Number Theorem — Hadamard and de la Vallée-Poussin — lived to 97 and 95 respectively; the math community jokes that proving it confers longevity',
+    'Gowers used higher-order Fourier analysis to prove a quantitative version of Szemerédi\'s theorem; he described it as the hardest and most enjoyable mathematics he had ever done',
+    '"Wrong proofs" can be more valuable than correct ones: Lamé and Cauchy both claimed to prove Fermat\'s Last Theorem, but Kummer\'s refutation led him to invent ideal numbers — the foundation of algebraic number theory',
+    // --- New: Product tips ---
+    'TheoremSearch supports mixed-language queries — typing "compact continuous bounded 紧集连续" can match results from both English and Chinese-indexed sources',
+    'In Learning mode, start with a broad concept like "measure theory basics"; the system will break it into sub-topics and expand each one systematically',
+    'Proof Review accepts .tex files; if your LaTeX draft doesn\'t compile yet, you can paste a raw \\begin{proof}...\\end{proof} block directly',
+    'Every conversation is saved to the history sidebar — including full proof steps and generated LaTeX source code — so you can revisit or compare sessions anytime',
+    'You can switch LLM providers in the settings panel at any time. If Gemini is slow, switching to DeepSeek usually gives faster responses',
+    'Theorem search result cards contain source links — click to jump directly to the original arXiv paper or Stacks Project page',
+    'After each solve, the { } button on each message bubble lets you independently convert that specific natural-language proof to LaTeX — no need to re-run the solve',
+    'In Proof Review, you can specify a focus: type "focus on Lemma 3.2" in the text box when uploading, and the AI will prioritise that section',
+    'If a generated LaTeX formula renders oddly, copy the source code to Overleaf or a local TeX editor for a complete render and diagnosis',
+    'In Learning mode, the "Regenerate" button next to any section regenerates only that section — perfect for iterative improvement without rerunning everything',
+    'The more specific your TheoremSearch query, the better: "uniformly continuous on compact set" finds far more relevant results than "continuity properties"',
+    'The system supports any OpenAI-compatible API relay — just fill in the Base URL in settings; no code changes needed',
+    // --- New: Mathematical ideas & quotes ---
+    '"Mathematics is the language in which God has written the universe." — Galileo',
+    '"The essence of mathematics lies in its freedom." — Cantor',
+    '"Nothing satisfies quite like a good proof — not because it is correct, but because it is beautiful." — Hardy',
+    '"A mathematician does not invent mathematics; he discovers it." — Hardy (the Platonist position)',
+    '"For most people mathematics is a tool; for mathematicians, the tool is the goal." — von Neumann',
+    '"Good mathematics is like good poetry: maximum meaning, minimum words." — mathematical folklore',
+    '"A theorem should be like a diamond: the more precisely it is cut, the more brilliantly it shines." — Pólya',
+    '"Intuition is the source of mathematical discovery; rigour is the guarantee of mathematical proof." — Poincaré',
+    '"We know truth through proof, but discover it through intuition." — Poincaré',
+    '"Asking the right question is harder than answering it." — often attributed to Cantor and others',
+    '"A proof is a device for convincing mathematicians." — Paul Halmos',
+    '"A real mathematician is not afraid of a stupid question." — Paul Erdős',
+    // --- New: Mathematical facts & curiosities ---
+    'The prime $41$ generates a remarkable sequence: $n^2+n+41$ is prime for $n=0,1,\\ldots,39$, but composite at $n=40$ where it equals $41^2$',
+    'The Banach–Tarski paradox fails in $\\mathbb{R}^2$: a disc cannot be decomposed into finitely many pieces and reassembled into two copies — the paradox relies on special properties of 3-D rotations',
+    'The four-colour theorem (1976) pioneered computer-assisted proof, requiring the checking of 1936 reducible configurations; a more streamlined computer verification appeared in 2005',
+    'Euler discovered that the number of partitions of $n$ into odd parts equals the number of partitions into distinct parts — an elegant bijection hidden in a generating-function identity',
+    'The harmonic series $1+1/2+1/3+\\cdots$ diverges glacially slowly: the first million terms sum to about 14.4, and it takes more than $10^{43}$ terms to exceed 100',
+    'The Fourier transform was invented to solve the heat equation, but now underpins MRI imaging, MP3 compression, seismic analysis, and financial time-series modelling',
+    'Almost all real numbers are transcendental, yet proving that any specific number is transcendental is typically extremely difficult',
+    'The "sum" $1+2+3+\\cdots = -1/12$ is not ordinary summation; it is the analytic continuation of the Riemann $\\zeta$ function evaluated at $s=-1$',
+    'Matrix multiplication is not commutative, but determinants are: $\\det(AB)=\\det(A)\\det(B)$ — meaning "volume scaling factors multiply" regardless of the order of operations',
+    'The Continuum Hypothesis — that there is no cardinal between $\\aleph_0$ and $2^{\\aleph_0}$ — was proved independent of ZFC: Gödel (1940) showed it cannot be disproved; Cohen (1963) showed it cannot be proved',
+    'Ramsey theory guarantees that sufficiently large structures must contain ordered sub-structures. The classic result: among any six people, three must be mutually acquainted or mutually strangers ($R(3,3)=6$)',
+    'In topology, a coffee cup and a doughnut are homeomorphic — continuously deformable into each other without tearing or gluing, since both have exactly one hole (genus 1)',
+    'Complex numbers were not invented for elegance but to solve real cubic equations: 16th-century Italian algebraists found that extracting a real root can require intermediate complex arithmetic',
+    'Goldbach\'s conjecture has been computationally verified up to $4\\times 10^{18}$ but remains unproved: every even integer greater than 2 is the sum of two primes',
+    'The discovery of non-Euclidean geometry revealed that axiomatic systems can have multiple distinct models — a realisation that eventually led to modern model theory and formal logic',
+    'Elliptic curve cryptography (ECC) exploits the difficulty of the discrete logarithm problem on an elliptic curve group; Bitcoin\'s signature algorithm uses the carefully chosen curve secp256k1',
+    'The classification of finite simple groups spans over 10,000 pages of journal articles, written by dozens of mathematicians over several decades — the longest proof in history',
+    'The Monty Hall problem became famous partly because top mathematicians wrote angry letters insisting the published solution was wrong — until computer simulations settled the debate',
+    'A space-filling curve (Peano 1890) maps the unit interval continuously onto the unit square — a result so counterintuitive that it forced mathematicians to rethink "dimension"',
+    'Knot theory, which classifies mathematical knots up to isotopy, unexpectedly became a powerful tool in molecular biology — DNA supercoiling is essentially a knot theory problem',
+    // --- Extra entries to reach 225+ ---
+    'The idea of "duality" pervades mathematics: vectors and dual spaces in linear algebra, open/closed sets in topology, AND/OR in logic — finding a dual often gives you a second theorem for free',
+    'The Fundamental Theorem of Calculus reveals that differentiation and integration are inverse operations — the discovery that caused Newton and Leibniz to dispute priority in one of history\'s most famous intellectual feuds',
+    'The Cauchy–Schwarz inequality $|\\langle u,v\\rangle|^2 \\leq \\langle u,u\\rangle\\langle v,v\\rangle$ holds in every inner product space and is the mathematical root of Heisenberg\'s uncertainty principle in physics',
+    'Grothendieck\'s memoir "Récoltes et Semailles" describes twelve ideas he believed transformed mathematics; his concepts of toposes and motives remain active research frontiers today',
+    'Taylor expansions represent smooth functions as power series — a tool at the heart of analysis and the rigorous foundation for engineering approximations like "small angle" in physics',
+    'In mathematics, "isomorphism" and "equivalence" are distinct concepts: isomorphism preserves all structure, equivalence only some properties — confusing the two causes endless muddle',
+    'Stirling\'s formula $n! \\approx \\sqrt{2\\pi n}(n/e)^n$ lets you compute large factorials without multiplying step by step; it appears in probability theory, statistical mechanics, and algorithm analysis',
+    'Descartes introduced the coordinate system in 1637, translating geometric problems into algebraic equations — one of history\'s most influential "language translations" in mathematics',
+    'Pólya\'s "How to Solve It" (1945) distilled problem-solving into four steps: understand, plan, execute, review — still the canonical reference for mathematical pedagogy eight decades later',
+    'All of real analysis rests on completeness: Cauchy sequences in $\\mathbb{R}$ always converge, making limits, derivatives, and integrals rigorously definable',
+    'RSA encryption relies on the difficulty of integer factorisation — but Shor\'s algorithm (1994) shows a quantum computer can factor large integers efficiently, threatening RSA once quantum hardware matures',
+    'Convex optimisation is ubiquitous in machine learning: training a support vector machine is a convex quadratic program, which guarantees a globally optimal solution exists and is unique',
+    'The infinite sum $1+1/2+1/4+1/8+\\cdots = 2$ confused ancient philosophers (Zeno\'s paradox) for centuries; rigorous limit theory in the 19th century finally provided a satisfying resolution',
+    'Infinity has a hierarchy: $\\aleph_0 < 2^{\\aleph_0} < 2^{2^{\\aleph_0}} < \\cdots$ — Cantor\'s discovery that there are infinitely many levels of infinity shattered the intuition that "infinite means one size"',
+    'One aesthetic criterion in mathematics is proof length — a one-line proof is often more admired than a thirty-page one, even when both are correct',
+    'Lagrange multipliers let you optimise under constraints by converting the problem into an unconstrained extremum of an augmented function — a core tool in engineering and economics',
+    '"Structural similarity" drives mathematical progress: defining rings, fields, and groups abstracts the essence of number operations so one theory simultaneously covers integers, polynomials, and rotations',
+    'Constructive vs non-constructive proof: a constructive proof exhibits a specific object; a non-constructive proof (e.g. proof by contradiction) establishes existence without construction — the two camps still debate their merits',
+    'Lebesgue integration replaced Riemann integration because it handles functions Riemann cannot (like the everywhere-discontinuous Dirichlet function) and satisfies far better limit theorems',
+    'Poincaré recurrence theorem: in certain dynamical systems, almost every trajectory returns arbitrarily close to its starting point infinitely often — a closed physical system will "nearly" revisit its initial state given enough time',
+    'In Solve mode, if you already know one step, state it explicitly: "assume Lemma X holds" — the AI will use that as a given and continue the derivation from there',
+    'The birthday paradox: in a group of just 23 people, the probability that two share a birthday exceeds 50%. With 70 people it exceeds 99.9%. Our intuition severely underestimates coincidences in combinatorics',
+    'Euler\'s identity $e^{i\\pi}+1=0$ unites five fundamental constants of mathematics in a single equation. In a poll of mathematicians it is consistently voted "the most beautiful formula"',
+    'The axiom of choice seems obviously true (you can always pick one element from each non-empty set), yet it implies results like the Banach–Tarski paradox that feel deeply wrong — mathematics at its most paradoxical',
+    'Category theory was initially dismissed as "abstract nonsense" by some mathematicians, but it became indispensable for organising and transferring ideas across wildly different areas of mathematics',
+    'The Collatz conjecture: take any positive integer; if even, halve it; if odd, triple it and add 1; repeat. The conjecture says you always reach 1 — verified for every number up to $2^{68}$, yet unproved',
+    'Sphere packing in 24 dimensions was solved by Maryna Viazovska in 2016 using modular forms — a stunning connection between a geometric optimisation problem and the analytic theory of automorphic forms',
+    'The "unreasonable effectiveness of mathematics in natural science" (Wigner, 1960) remains one of philosophy\'s deepest puzzles: why should structures invented for pure abstraction describe physical reality so precisely?',
+    'Gromov\'s h-principle shows that many geometric differential equations have solutions as long as there is no topological obstruction — topology constrains, but often less than you would expect',
+    'The longest element in a finite Coxeter group corresponds to sending every positive root to a negative root; this single element captures a global symmetry of the entire root system',
+    'Model theory studies the relationship between formal languages and the structures that satisfy them; a classical result is Löwenheim–Skolem: any first-order theory with an infinite model has models of every infinite cardinality',
+    'The law of quadratic reciprocity, proved by Gauss at age 19, describes when one prime is a perfect square modulo another; Gauss called it the "gem of higher arithmetic" and gave eight different proofs',
+    'Algebraic geometry connects polynomial equations to geometric shapes; Wiles\'s proof of Fermat\'s Last Theorem passes through the deep Shimura–Taniyama–Weil conjecture about elliptic curves and modular forms',
+    'The sum of the first $n$ odd numbers is always $n^2$ — a fact with a beautiful visual proof: arrange dots in an L-shape, and each new odd number added forms the next perfect square',
   ],
 };
 
+// 页面加载时为每个用户独立洗牌一份副本，保证每次访问顺序不同
+const _waitTipsShuffled = (() => {
+  function _shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  return { zh: _shuffle(_WAIT_TIPS.zh), en: _shuffle(_WAIT_TIPS.en) };
+})();
+
 let _waitTipTimer = null;
 let _waitTipIdx = 0;
-let _waitTipInterval = 8000;   // 当前间隔（每次翻倍）
+let _waitTipInterval = 8000;   // 固定 8 秒轮换间隔
 let _waitTipAppearTimer = null; // 延迟出现的计时器
+
+// PDF 审查进度等待提示（单独管理，不影响 solve 等待 tips）
+let _rvWaitTipTimer = null;
+let _rvWaitTipIdx = 0;
+
+function _startReviewWaitTips(el) {
+  if (!el) return;
+  if (_rvWaitTipTimer) clearInterval(_rvWaitTipTimer);
+  const tips = _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.zh;
+  _rvWaitTipIdx = Math.floor(Math.random() * tips.length);
+
+  // 延迟4秒后显示第一条提示
+  setTimeout(() => {
+    if (!el.isConnected) return;
+    el.innerHTML = _renderMathText(tips[_rvWaitTipIdx]);
+    renderKatexFallback(el);
+
+    // 开始定时轮播
+    _rvWaitTipTimer = setInterval(() => {
+      const ts = _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.zh;
+      _rvWaitTipIdx = (_rvWaitTipIdx + 1) % ts.length;
+      if (el.isConnected) {
+        el.innerHTML = _renderMathText(ts[_rvWaitTipIdx]);
+        renderKatexFallback(el);
+      } else {
+        _stopReviewWaitTips(null);
+      }
+    }, 9000);
+  }, 4000);
+}
+
+function _stopReviewWaitTips(contentEl) {
+  if (_rvWaitTipTimer) { clearInterval(_rvWaitTipTimer); _rvWaitTipTimer = null; }
+  if (contentEl) {
+    const el = contentEl.querySelector('#rv-wait-tip');
+    if (el) el.textContent = '';
+  }
+}
 
 function _renderMathText(text) {
   if (text === null || text === undefined) return '';
@@ -2099,55 +2635,42 @@ function _renderMathText(text) {
 function startWaitTips(containerEl, opts) {
   opts = opts || {};
   if (_waitTipTimer || _waitTipAppearTimer) return;
-  _waitTipIdx = Math.floor(Math.random() * (_WAIT_TIPS.en.length));
-  _waitTipInterval = 5000;
+  _waitTipIdx = Math.floor(Math.random() * (_waitTipsShuffled.en.length));
+  _waitTipInterval = 9000;
 
-  // 取当前语言的 tips（每次调用重新读，语言切换后自动生效）
-  const getTips = () => _WAIT_TIPS[AppState.lang] || _WAIT_TIPS.en;
+  // 取当前语言的洗牌 tips（每次调用重新读，语言切换后自动生效）
+  const getTips = () => _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.en;
 
   const firstDelayMs = opts.firstDelayMs != null ? opts.firstDelayMs : 4000;
 
   // 延迟显示第一条（学习模式默认 800ms）
   _waitTipAppearTimer = setTimeout(() => {
     _waitTipAppearTimer = null;
-    const tips = opts.learnTip ? [t('ui.learn.waitTip')] : getTips();
+    const tips = getTips();
 
     const bar = document.createElement('div');
-    bar.className = 'wait-tip-bar';
+    bar.className = 'review-wait-tip';
     bar.id = 'wait-tip-bar';
-    bar.innerHTML = `<span class="wait-tip-text">${opts.learnTip ? escapeHtml(tips[0]) : _renderMathText(tips[_waitTipIdx % tips.length])}</span>`;
+    bar.innerHTML = _renderMathText(tips[_waitTipIdx % tips.length]);
     containerEl.appendChild(bar);
     requestAnimationFrame(() => {
-      bar.classList.add('visible');
       renderKatexFallback(bar);
     });
 
-    // 第一条出现后，按翻倍间隔调度后续
+        // 第一条出现后，按固定 9 秒间隔调度后续
     function scheduleNext() {
       _waitTipTimer = setTimeout(() => {
         _waitTipTimer = null;
-        const curTips = opts.learnTip ? [t('ui.learn.waitTip')] : getTips();
+        const curTips = getTips();
         _waitTipIdx = (_waitTipIdx + 1) % curTips.length;
         const el = document.getElementById('wait-tip-bar');
         if (!el) return;
-        el.classList.remove('visible');
-        setTimeout(() => {
-          const el2 = document.getElementById('wait-tip-bar');
-          if (!el2) return;
-          if (opts.learnTip) {
-            el2.querySelector('.wait-tip-text').textContent = curTips[0];
-          } else {
-            el2.querySelector('.wait-tip-text').innerHTML = _renderMathText(curTips[_waitTipIdx]);
-            renderKatexFallback(el2);
-          }
-          el2.classList.add('visible');
-          if (!opts.learnTip) renderKatexFallback(el2);
-        }, 400);
-        _waitTipInterval = Math.min(_waitTipInterval * 2, 20000); // 5→10→20→20…
+        el.innerHTML = _renderMathText(curTips[_waitTipIdx]);
+        renderKatexFallback(el);
         scheduleNext();
       }, _waitTipInterval);
     }
-    if (!opts.learnTip) scheduleNext();
+    scheduleNext();
   }, firstDelayMs);
 }
 
@@ -2464,20 +2987,46 @@ async function apiPost(endpoint, body) {
 /* ─────────────────────────────────────────────────────────────
    12. 消息渲染
 ───────────────────────────────────────────────────────────── */
-function addMessageActions(bubbleEl, rawText) {
+function addMessageActions(bubbleEl, rawText, opts = {}) {
   if (!bubbleEl) return;
   bubbleEl.querySelector('.msg-actions')?.remove();
 
   const actionsEl = document.createElement('div');
   actionsEl.className = 'msg-actions';
+  const latexBtnHtml = opts.isSolve
+    ? `<button class="msg-action-btn msg-latex-btn" onclick="triggerLatexFromBubble(this)"
+         title="${t('ui.latexBtnTitle')}">{ } LaTeX</button>`
+    : '';
   actionsEl.innerHTML = `
     <button class="msg-action-btn" onclick="copyMsgText(this)">⎘ ${t('ui.copy')}</button>
-    <button class="msg-action-btn thumb-btn" onclick="thumbMsg(this,'up')">↑</button>
-    <button class="msg-action-btn thumb-btn" onclick="thumbMsg(this,'down')">↓</button>
+    ${latexBtnHtml}
   `;
   actionsEl.dataset.rawText = rawText;
   bubbleEl.appendChild(actionsEl);
 }
+
+window.triggerLatexFromBubble = function(btn) {
+  if (btn.dataset.running === 'true') return;  // 防重入
+  const bubble = btn.closest('.msg-bubble');
+  const contentEl = bubble?.querySelector('.msg-content');
+  const blueprint = contentEl?.dataset.solveBlueprint;
+  const statement = contentEl?.dataset.solveStatement || '';
+  if (!blueprint) {
+    showToast('warning', t('ui.latexNoBlueprintHint'));
+    return;
+  }
+  btn.dataset.running = 'true';
+  btn.textContent = `{ } ${t('ui.latexGenerating')}`;
+  btn.disabled = true;
+
+  _streamLatexPanel(contentEl, blueprint, statement)
+    .catch(err => { if (err?.name !== 'AbortError') showToast('error', err.message || String(err)); })
+    .finally(() => {
+      btn.dataset.running = 'false';
+      btn.disabled = false;
+      btn.textContent = '{ } LaTeX';
+    });
+};
 
 window.copyMsgText = function(btn) {
   const raw = btn.closest('.msg-actions')?.dataset.rawText || '';
@@ -2822,7 +3371,7 @@ async function handleLearning(statement) {
   contentEl.innerHTML = `<div class="learn-body" id="learn-body">${buildLearnSkeletonHtml()}</div>`;
   AppState.set('isStreaming', true);
 
-  startWaitTips(contentEl, { firstDelayMs: 800, learnTip: true });
+  startWaitTips(contentEl, { firstDelayMs: 800 });
 
   const ctrl = new AbortController();
   AppState._abortController = ctrl;
@@ -2938,7 +3487,7 @@ async function handleLearning(statement) {
       }
     });
     // 最终 KaTeX 兜底渲染
-    renderKatexFallback(b);
+      renderKatexFallback(b);
   }
 
   window._lastLearnRawBuffer = rawBuffer;
@@ -3159,11 +3708,10 @@ async function handleSolving(statement) {
 }
 
 function _buildSolveShell() {
-  const isZh = AppState.lang === 'zh';
   return `
     <div class="solve-status-pill">
       <span class="spinner" aria-hidden="true"></span>
-      <span class="solve-status-text">${isZh ? '启动求解…' : 'Starting…'}</span>
+      <span class="solve-status-text">${t('ui.solveStarting')}</span>
     </div>
     <div class="solve-steps"></div>
     <div class="solve-layout">
@@ -3173,7 +3721,7 @@ function _buildSolveShell() {
           <span class="solve-latex-title">LaTeX</span>
           <div class="solve-latex-actions">
             <span class="solve-latex-status"></span>
-            <button class="solve-latex-copy-btn" title="${isZh ? '复制 LaTeX' : 'Copy LaTeX'}">${isZh ? '复制' : 'Copy'}</button>
+            <button class="solve-latex-copy-btn" title="${t('ui.copy')} LaTeX">${t('ui.copy')}</button>
           </div>
         </div>
         <pre class="solve-latex-code"><code></code></pre>
@@ -3191,7 +3739,7 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
   if (pillEl) {
     pillEl.classList.add('done');
     const txt = pillEl.querySelector('.solve-status-text');
-    if (txt) txt.textContent = stopped ? '已停止' : '求解完成';
+    if (txt) txt.textContent = stopped ? t('ui.solveStopped') : t('ui.solveDone');
   }
   if (stepsEl) {
     stepsEl.querySelectorAll('.solve-step.active').forEach(el => {
@@ -3212,14 +3760,18 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
       const barHtml = buildVerdictBar(metadata);
       bodyEl.innerHTML = barHtml + renderMarkdown(rawBuffer);
     } else {
-      bodyEl.innerHTML = renderMarkdown(rawBuffer);
+    bodyEl.innerHTML = renderMarkdown(rawBuffer);
     }
     renderKatexFallback(bodyEl);
   }
 
-  // 添加操作按钮
+  // 存储 blueprint 和 statement 供气泡 { } LaTeX 按钮使用
+  if (rawBuffer) contentEl.dataset.solveBlueprint = rawBuffer;
+  contentEl.dataset.solveStatement = statement;
+
+  // 添加操作按钮（含 { } LaTeX 按钮）
   const bubbleEl = contentEl.closest('.msg-bubble');
-  if (bubbleEl) addMessageActions(bubbleEl, rawBuffer);
+  if (bubbleEl) addMessageActions(bubbleEl, rawBuffer, { isSolve: true });
 
   // 存历史
   const lastHistory = AppState.history[AppState.history.length - 1];
@@ -3228,18 +3780,9 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
   }
   saveCurrentSession(statement);
   smartScroll(contentEl);
-
-  // 自动生成 LaTeX（仅当工具栏开关打开，且有实质证明内容时）
-  const latexToolbarBtn = document.getElementById('toolbar-latex-btn');
-  const wantLatex = latexToolbarBtn?.dataset.active === 'true';
-  if (!stopped && wantLatex && rawBuffer && rawBuffer.length > 100 &&
-      !/No confident solution/i.test(rawBuffer) &&
-      !/counterexample/i.test(rawBuffer.slice(0, 200))) {
-    _streamLatexPanel(contentEl, rawBuffer);
-  }
 }
 
-async function _streamLatexPanel(contentEl, blueprint) {
+async function _streamLatexPanel(contentEl, blueprint, statement = '') {
   const panel = contentEl.querySelector('.solve-latex-panel');
   if (!panel) return;
   panel.style.display = '';
@@ -3247,9 +3790,8 @@ async function _streamLatexPanel(contentEl, blueprint) {
   const codeEl = panel.querySelector('code');
   const statusEl = panel.querySelector('.solve-latex-status');
   const copyBtn = panel.querySelector('.solve-latex-copy-btn');
-  const isZh = AppState.lang === 'zh';
 
-  if (statusEl) statusEl.textContent = isZh ? '生成中…' : 'Generating…';
+  if (statusEl) statusEl.textContent = t('ui.latexGenerating');
 
   // Strip markdown code fences so the output is directly pasteable into Overleaf
   const _stripFences = s => s
@@ -3259,13 +3801,17 @@ async function _streamLatexPanel(contentEl, blueprint) {
 
   let latex = '';
 
-  copyBtn?.addEventListener('click', () => {
+  // 用 cloneNode 替换旧按钮，避免多次调用时监听器叠加
+  if (copyBtn) {
+    const freshCopyBtn = copyBtn.cloneNode(true);
+    copyBtn.parentNode.replaceChild(freshCopyBtn, copyBtn);
+    freshCopyBtn.addEventListener('click', () => {
     if (!latex) return;
     const clean = _stripFences(latex);
     navigator.clipboard.writeText(clean).then(() => {
-      const prev = copyBtn.textContent;
-      copyBtn.textContent = isZh ? '已复制!' : 'Copied!';
-      setTimeout(() => { copyBtn.textContent = prev; }, 1500);
+        const prev = freshCopyBtn.textContent;
+        freshCopyBtn.textContent = t('ui.latexCopied');
+        setTimeout(() => { freshCopyBtn.textContent = prev; }, 1500);
     }).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = clean;
@@ -3275,18 +3821,24 @@ async function _streamLatexPanel(contentEl, blueprint) {
       document.body.removeChild(ta);
     });
   });
+  }
 
   try {
     const resp = await fetch('/solve_latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blueprint, model: AppState.model }),
+      body: JSON.stringify({ blueprint, statement, model: AppState.model }),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      let detail = `HTTP ${resp.status}`;
+      try { const e = await resp.json(); detail = e.detail || e.error?.message || detail; } catch {}
+      throw new Error(detail);
+    }
 
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
+    let hasError = false;
 
     while (true) {
       const { value, done } = await reader.read();
@@ -3303,23 +3855,31 @@ async function _streamLatexPanel(contentEl, blueprint) {
           if (obj.chunk !== undefined) {
             latex += obj.chunk;
             if (codeEl) codeEl.textContent = _stripFences(latex);
+          } else if (obj.error) {
+            if (statusEl) statusEl.textContent = t('ui.latexError', { e: obj.error });
+            hasError = true;
+            break;
           }
         } catch {}
       }
+      if (hasError) break;
     }
 
-    if (statusEl) statusEl.textContent = isZh ? '完成' : 'Done';
-    if (copyBtn) copyBtn.disabled = false;
+    if (!hasError) {
+      if (statusEl) statusEl.textContent = t('ui.latexDone');
+      // freshCopyBtn 已替换 copyBtn，用 panel 重新查询
+      const activeCopyBtn = panel.querySelector('.solve-latex-copy-btn');
+      if (activeCopyBtn) activeCopyBtn.disabled = false;
 
-    // Overleaf 提示
+      // Overleaf 提示（移除旧的，插入新的）
+      panel.querySelector('.solve-overleaf-note')?.remove();
     const noteEl = document.createElement('div');
     noteEl.className = 'solve-overleaf-note';
-    noteEl.innerHTML = isZh
-      ? `推荐使用 <a href="https://www.overleaf.com" target="_blank" rel="noopener noreferrer">Overleaf 在线编译器</a> 编译此 LaTeX 文件`
-      : `Compile with <a href="https://www.overleaf.com" target="_blank" rel="noopener noreferrer">Overleaf online compiler</a>`;
+      noteEl.innerHTML = t('ui.latexOverleafHtml');
     panel.appendChild(noteEl);
+    }
   } catch (e) {
-    if (statusEl) statusEl.textContent = isZh ? `失败: ${e.message}` : `Error: ${e.message}`;
+    if (statusEl) statusEl.textContent = t('ui.latexError', { e: e.message });
   }
 }
 
@@ -3460,14 +4020,30 @@ function renderMathText(text, { inline = false } = {}) {
   try {
     normalized = autoWrapReviewMath(raw);
   } catch {}
+
+  // 保护多行 $$...$$ 块，避免被 \n{2,} 段落分割拆散导致单侧定界符丢失
+  const mathBlocks = [];
+  normalized = normalized.replace(/\$\$[\s\S]*?\$\$/g, m => {
+    mathBlocks.push(m);
+    return `\x00MB${mathBlocks.length - 1}\x00`;
+  });
+
   const safe = escapeHtml(normalized);
   if (inline) return safe.replace(/\s*\n+\s*/g, ' ');
+
   const blocks = safe
     .split(/\n{2,}/)
     .map(part => part.trim())
     .filter(Boolean)
-    .map(part => `<p class="review-math-paragraph">${part.replace(/\n/g, '<br>')}</p>`);
-  return blocks.join('') || `<p class="review-math-paragraph">${safe.replace(/\n/g, '<br>')}</p>`;
+    .map(part => {
+      // 还原 $$...$$ 占位符（在 escapeHtml 之后，占位符本身不含特殊字符，不受影响）
+      const restored = part.replace(/\x00MB(\d+)\x00/g, (_, i) => mathBlocks[+i]);
+      return `<p class="review-math-paragraph">${restored.replace(/\n/g, '<br>')}</p>`;
+    });
+  return blocks.join('') || (() => {
+    const restored = safe.replace(/\x00MB(\d+)\x00/g, (_, i) => mathBlocks[+i]);
+    return `<p class="review-math-paragraph">${restored.replace(/\n/g, '<br>')}</p>`;
+  })();
 }
 
 function stripPresentationMarkdown(text) {
@@ -3533,10 +4109,15 @@ const _VERDICT_CSS_MAP = {
 function renderTheoremCardHtml(tr, index) {
   if (!tr) return '';
   const tCls = _VERDICT_CSS_MAP[tr.verdict] || 'unproven';
-  const title = tr.theorem_name
-    ? `${t('ui.review.theorem')} ${index}: ${renderMathText(tr.theorem_name, { inline: true })}`
+  // 内部 LLM 指令以 "(" 开头，不应作为用户可见标题
+  const rawName = tr.theorem_name || '';
+  const displayName = rawName.startsWith('(')
+    ? (tr.theorem_ref || tr.location_hint || '')
+    : rawName;
+  const title = displayName
+    ? `${t('ui.review.theorem')} ${index}: ${renderMathText(displayName, { inline: true })}`
     : `${t('ui.review.theorem')} ${index}`;
-  const statementHtml = tr.statement
+  const statementHtml = (tr.statement && !tr.statement.startsWith('('))
     ? `<div class="theorem-card-section theorem-card-statement">${renderReviewField(
         AppState.lang === 'zh' ? '命题' : 'Statement',
         tr.statement
@@ -3685,11 +4266,11 @@ function renderReviewSummary(el, report) {
   const topIssues = issuePool.slice(0, 8);
   const summaryText = topIssues.length
     ? (isZh
-        ? `审查完成，共发现 ${topIssues.length} 个需要关注的问题；下面列出具体描述。`
-        : `Review complete. ${topIssues.length} issue(s) need attention; concrete descriptions are listed below.`)
+        ? `${t('ui.reviewComplete')}，共发现 ${topIssues.length} 个需要关注的问题；下面列出具体描述。`
+        : `${t('ui.reviewComplete')}. ${topIssues.length} issue(s) need attention; concrete descriptions are listed below.`)
     : (isZh
-        ? '审查完成，当前未发现明显问题。'
-        : 'Review complete. No obvious issues were found.');
+        ? `${t('ui.reviewComplete')}，当前未发现明显问题。`
+        : `${t('ui.reviewComplete')}. No obvious issues were found.`);
   // 兼容 PDF 章节审查（sections_checked）和文本审查（theorems_checked）两种路径
   const checkedCount = stats.sections_checked || stats.theorems_checked || 0;
   const checkedLabel = stats.sections_checked != null
@@ -4181,8 +4762,12 @@ async function handleReviewing(focusText) {
       <span class="spinner" aria-hidden="true"></span>
       <span class="rv-status-text">${escapeHtml(initText)}</span>
     </div>
+    <div class="review-wait-tip" id="rv-wait-tip"></div>
     <div class="review-cards" id="rv-cards"></div>
     <div class="review-final" id="rv-final"></div>`;
+
+  const waitTipEl = contentEl.querySelector('#rv-wait-tip');
+  if (waitTipEl) _startReviewWaitTips(waitTipEl);
 
   let finalReport = null;
   const partials = [];
@@ -4198,14 +4783,26 @@ async function handleReviewing(focusText) {
         }
       },
       onResult: (payload) => {
-        if (!payload || payload.kind !== 'theorem' || !payload.data) return;
+        if (!payload || !payload.data) return;
         partials.push(payload.data);
         const cardsEl = contentEl.querySelector('#rv-cards');
         if (cardsEl) {
+          if (payload.kind === 'section') {
+            const sec = payload.data;
+            const hasIssues = (sec.logic_issues && sec.logic_issues.length) ||
+                              (sec.citation_issues && sec.citation_issues.length);
+            if (hasIssues) {
+              const html = renderSectionCardHtml(sec, payload.index || partials.length);
+              cardsEl.insertAdjacentHTML('beforeend', html);
+              try { renderKatexFallback(cardsEl.lastElementChild); } catch {}
+              smartScroll(contentEl);
+            }
+          } else {
           cardsEl.insertAdjacentHTML('beforeend',
             renderTheoremCardHtml(payload.data, payload.index || partials.length));
           try { renderKatexFallback(cardsEl.lastElementChild); } catch {}
           smartScroll(contentEl);
+          }
         }
       },
       onFinal: (report) => {
@@ -4214,10 +4811,11 @@ async function handleReviewing(focusText) {
       onError: (e) => { throw new Error(e); },
     });
 
+    _stopReviewWaitTips(contentEl);
     const pill = contentEl.querySelector('#rv-status');
     if (pill) pill.classList.add('done');
     const txt = contentEl.querySelector('.rv-status-text');
-    if (txt) txt.textContent = isZh ? '审查完成' : 'Review complete';
+    if (txt) txt.textContent = t('ui.reviewComplete');
 
     if (finalReport) {
       // 把流式收到的所有 theorem 卡塞回 final 报告，便于保存/重放
@@ -4229,11 +4827,12 @@ async function handleReviewing(focusText) {
     // 把 AI 回复内容追加到历史
     const lastHistory = AppState.history[AppState.history.length - 1];
     if (lastHistory && lastHistory.role === 'ai' && !lastHistory.content) {
-      lastHistory.content = isZh ? '证明审查完成' : 'Review complete';
+      lastHistory.content = t('ui.reviewComplete');
     }
     saveCurrentSession(isZh ? '证明审查' : 'Proof review');
     Attachments.clear();
   } catch (err) {
+    _stopReviewWaitTips(contentEl);
     if (err && err.name === 'AbortError') return;
     addErrorInline(contentEl, t('ui.err.reviewing', { e: err.message || err }));
     showToast('error', err.message || String(err));
@@ -4255,12 +4854,18 @@ async function _handleReviewingPdf(attach, focusText) {
 
   const contentEl = addMessage('ai', null);
   if (!contentEl) return;
-  const initText = isZh ? '正在上传并解析 PDF…' : 'Uploading and parsing PDF…';
   contentEl.innerHTML = `
     <div class="review-status-pill" id="rv-status">
       <span class="spinner" aria-hidden="true"></span>
-      <span class="rv-status-text">${escapeHtml(initText)}</span>
+      <span class="rv-status-text">${escapeHtml(t('ui.reviewUploading'))}</span>
     </div>
+    <div class="review-progress-wrap" id="rv-progress" style="display:none">
+      <div class="review-progress-bar-bg">
+        <div class="review-progress-bar" id="rv-progress-bar" style="width:0%"></div>
+      </div>
+      <span class="review-progress-label" id="rv-progress-label">0%</span>
+    </div>
+    <div class="review-wait-tip" id="rv-wait-tip"></div>
     <div class="review-cards" id="rv-cards"></div>
     <div class="review-final" id="rv-final"></div>`;
 
@@ -4318,6 +4923,31 @@ async function _handleReviewingPdf(attach, focusText) {
             if (obj.step === 'error') {
               throw new Error(obj.status);
             }
+
+            // 进度条：解析 "N/M" 格式（如"正在结构化审查章节 3/19：..."）
+            const progressWrap = contentEl.querySelector('#rv-progress');
+            const progressBar  = contentEl.querySelector('#rv-progress-bar');
+            const progressLabel = contentEl.querySelector('#rv-progress-label');
+            const waitTipEl    = contentEl.querySelector('#rv-wait-tip');
+            const step = obj.step || '';
+
+            if (step === 'nanonets' && progressWrap) {
+              progressWrap.style.display = '';
+              if (progressBar) progressBar.style.width = '8%';
+              if (progressLabel) progressLabel.textContent = '8%';
+              if (!_rvWaitTipTimer) _startReviewWaitTips(waitTipEl);
+            } else if (step === 'nanonets_ok' && progressBar) {
+              progressBar.style.width = '18%';
+              if (progressLabel) progressLabel.textContent = '18%';
+            } else if (step === 'section') {
+              const m = /(\d+)\/(\d+)/.exec(obj.status || '');
+              if (m && progressBar) {
+                const n = +m[1], total = +m[2];
+                const pct = Math.round(20 + (n / total) * 75);
+                progressBar.style.width = pct + '%';
+                if (progressLabel) progressLabel.textContent = pct + '%';
+              }
+            }
           } else if (obj.result) {
             const payload = obj.result;
             if (payload && payload.data) {
@@ -4331,8 +4961,8 @@ async function _handleReviewingPdf(attach, focusText) {
                   if (!hasIssues) { /* 无问题章节，跳过渲染 */ } else {
                     const html = renderSectionCardHtml(sec, payload.index || partials.length);
                     cardsEl.insertAdjacentHTML('beforeend', html);
-                    try { renderKatexFallback(cardsEl.lastElementChild); } catch {}
-                    smartScroll(contentEl);
+                try { renderKatexFallback(cardsEl.lastElementChild); } catch {}
+                smartScroll(contentEl);
                   }
                 } else {
                   const html = renderTheoremCardHtml(payload.data, payload.index || partials.length);
@@ -4356,10 +4986,16 @@ async function _handleReviewingPdf(attach, focusText) {
 
     const pill = contentEl.querySelector('#rv-status');
     const txt = contentEl.querySelector('.rv-status-text');
+    // 进度条完成
+    _stopReviewWaitTips(contentEl);
+    const pb = contentEl.querySelector('#rv-progress-bar');
+    const pl = contentEl.querySelector('#rv-progress-label');
+    if (pb) { pb.style.width = '100%'; pb.style.transition = 'width .3s'; }
+    if (pl) pl.textContent = '100%';
 
     if (finalReport) {
       if (pill) pill.classList.add('done');
-      if (txt) txt.textContent = isZh ? '审查完成' : 'Review complete';
+      if (txt) txt.textContent = t('ui.reviewComplete');
       const fullReport = Object.assign({}, finalReport, { theorem_reviews: partials });
       renderReviewSummary(contentEl.querySelector('#rv-final'), fullReport);
       const bubble = contentEl.closest('.msg-bubble');
@@ -4367,7 +5003,7 @@ async function _handleReviewingPdf(attach, focusText) {
     } else {
       // 流式中途断开：未收到 final 帧，给出警示而非"完成"
       if (pill) pill.classList.add('done');
-      if (txt) txt.textContent = isZh ? '审查未完成（数据不完整）' : 'Review incomplete';
+      if (txt) txt.textContent = t('ui.reviewIncomplete');
       if (partials.length > 0) {
         // 已有部分章节结果，尝试渲染已有内容
         const partial = { overall_verdict: 'NotChecked', stats: { sections_checked: partials.length }, issues: [], theorem_reviews: partials };
@@ -4382,6 +5018,7 @@ async function _handleReviewingPdf(attach, focusText) {
     saveCurrentSession(isZh ? '证明审查 (PDF)' : 'Proof review (PDF)');
     Attachments.clear();
   } catch (err) {
+    _stopReviewWaitTips(contentEl);
     if (err && err.name === 'AbortError') return;
     addErrorInline(contentEl, t('ui.err.reviewing', { e: err.message || err }));
     showToast('error', err.message || String(err));
@@ -4472,8 +5109,8 @@ function renderSearchResults(contentEl, data) {
           <div class="search-result-name">${nameHtml}</div>
           <div class="search-result-score ${simCls}">${simPct}%</div>
         </div>
-        ${slogan ? `<div class="search-result-slogan">${renderMd(slogan)}</div>` : ''}
-        ${decl ? `<div class="search-result-decl lean-decl">${renderMd(decl)}</div>` : ''}
+        ${slogan ? `<div class="search-result-slogan">${renderMathText(slogan)}</div>` : ''}
+        ${decl ? `<div class="search-result-decl lean-decl">${renderMathText(decl)}</div>` : ''}
         ${sourceHtml}
       </div>`;
   }).join('');
@@ -5030,11 +5667,10 @@ async function checkHealth() {
     clearTimeout(timer);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    setStatus('status-api', 'ok');
     const llmStatus = data.dependencies?.llm?.status || '--';
     setStatus('status-llm', llmStatus === 'ok' ? 'ok' : llmStatus);
-    const tsStatus = data.dependencies?.theorem_search?.status;
-    setStatus('status-ts', tsStatus?.startsWith('ok') ? 'ok' : tsStatus || '--');
+    const nanStatus = data.dependencies?.nanonets?.status || data.dependencies?.paper_review_agent?.nanonets?.status || '--';
+    setStatus('status-nanonets', nanStatus === 'ok' ? 'ok' : nanStatus);
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot online'; }
 
     // 回填 LLM 配置（api_key 不回显）
@@ -5050,9 +5686,8 @@ async function checkHealth() {
   } catch (err) {
     clearTimeout(timer);
     const isTimeout = err && err.name === 'AbortError';
-    setStatus('status-api', isTimeout ? 'timeout' : 'offline');
-    setStatus('status-llm', '--');
-    setStatus('status-ts', '--');
+    setStatus('status-llm', isTimeout ? 'timeout' : 'offline');
+    setStatus('status-nanonets', '--');
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot offline'; }
   } finally {
     checkHealth._running = false;
@@ -5102,16 +5737,6 @@ function autoResize(textarea) {
    21. 事件绑定
 ───────────────────────────────────────────────────────────── */
 function bindEvents() {
-  // toolbar LaTeX 开关按钮
-  document.getElementById('toolbar-latex-btn')?.addEventListener('click', function () {
-    const next = this.dataset.active !== 'true';
-    this.dataset.active = String(next);
-    this.setAttribute('aria-pressed', String(next));
-    this.classList.toggle('active', next);
-    this.title = next
-      ? (AppState.lang === 'zh' ? '已开启：完成后生成 LaTeX' : 'On: generate LaTeX after solve')
-      : (AppState.lang === 'zh' ? '点击开启 LaTeX 生成' : 'Click to generate LaTeX after solve');
-  });
 
   // 卡片点击
   document.querySelectorAll('.feature-card').forEach(card => {
@@ -5145,7 +5770,9 @@ function bindEvents() {
     });
   });
 
-  // 顶部 Mode Tabs
+  // 顶部 Mode Tabs - 仅作为显示，不可点击切换（用户必须返回主界面再点击卡片切换）
+  // 移除点击事件，使顶栏Tab仅用于显示当前模式
+  /*
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const mode = tab.dataset.mode;
@@ -5171,6 +5798,7 @@ function bindEvents() {
       }
     });
   });
+  */
 
   document.getElementById('nav-playground')?.addEventListener('click', () => AppState.set('view', 'home'));
   document.getElementById('nav-projects')?.addEventListener('click', () => openModal('projects-modal'));
@@ -5528,10 +6156,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initRenderer();
     applyLang(detectLang());
     _syncLangTopbar();
+    UI.switchView(AppState.view);
     UI.updateMode(AppState.mode);
-    // plan H：默认不打开 panel（cursor 风格）
     bindEvents();
-    renderExamplePrompts();
     refreshHistorySidebar();
     _syncModeTabs();
     setTimeout(checkHealth, 1200);
