@@ -234,6 +234,7 @@ We welcome contributions from the mathematical community:
 
 - [TheoremSearch](https://www.theoremsearch.com) — Semantic theorem database
 - [Aletheia](https://arxiv.org/abs/2602.10177) — Generator–Verifier–Reviser architecture
+- [Rethlas](https://github.com/frenzymath/Rethlas) — Natural-language reasoning system with generation and verification agents
 - [LATRACE](https://github.com/zxxz1000/LATRACE) — Long-term memory system
 - [Nanonets OCR](https://nanonets.com) — Formula-aware PDF extraction
 - [Harmonic Aristotle](https://aristotle.harmonic.fun) — Lean 4 formalization engine

@@ -149,6 +149,7 @@ api_key = "your-key"  # 可选，用于 PDF 审查
 
 - [TheoremSearch](https://www.theoremsearch.com) — 定理数据库和引用验证
 - [Aletheia](https://arxiv.org/abs/2602.10177) — 生成–验证–修订架构
+- [Rethlas](https://github.com/frenzymath/Rethlas) — 基于生成和验证代理的自然语言推理系统
 - [LATRACE](https://github.com/zxxz1000/LATRACE) — 长期记忆系统
 - [Nanonets](https://nanonets.com) — 公式感知的 PDF 提取
 - [Harmonic Aristotle](https://aristotle.harmonic.fun) — Lean 4 形式化
