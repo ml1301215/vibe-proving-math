@@ -1,4 +1,4 @@
-![vibe_proving](assets/banner.png)
+![vibe_proving](assets/banner.jpg)
 
 <p align="center">
 AI-driven mathematical research assistant for students and researchers

@@ -1,4 +1,4 @@
-![vibe_proving](assets/banner.png)
+![vibe_proving](assets/banner.jpg)
 
 <p align="center">
 面向学生和研究者的 AI 驱动数学研究助手
