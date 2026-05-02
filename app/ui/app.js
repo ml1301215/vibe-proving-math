@@ -7,6 +7,11 @@
 'use strict';
 
 /* ─────────────────────────────────────────────────────────────
+   并发控制全局锁
+───────────────────────────────────────────────────────────── */
+let _sendLock = false;
+
+/* ─────────────────────────────────────────────────────────────
    1. 国际化（I18N）
 ───────────────────────────────────────────────────────────── */
 const I18N = {
@@ -5128,63 +5133,85 @@ function saveCurrentSession(title) {
    15. 发送
 ───────────────────────────────────────────────────────────── */
 async function sendMessage() {
-  if (AppState.isStreaming) return;
+  // 原子性并发控制：防止重复提交
+  if (AppState.isStreaming || _sendLock) return;
+  _sendLock = true;
 
-  const textarea = document.getElementById('input-textarea');
-  const text = textarea?.value?.trim();
+  try {
+    const textarea = document.getElementById('input-textarea');
+    const text = textarea?.value?.trim();
+    const savedText = text;  // 备份输入以便失败时恢复
 
-  if (!text && AppState.mode !== 'reviewing') {
-    const row = textarea?.closest('.textarea-row');
-    row?.classList.add('shake');
-    setTimeout(() => row?.classList.remove('shake'), 500);
-    return;
-  }
-
-  // 前端输入长度预检（与后端 10000 字符上限一致），避免无谓 422 往返
-  const _MODE_CHAR_LIMIT = 10000;
-  if (text && text.length > _MODE_CHAR_LIMIT && AppState.mode !== 'reviewing') {
-    const isZh = AppState.lang === 'zh';
-    showToast('warning', isZh
-      ? `输入内容超过 ${_MODE_CHAR_LIMIT.toLocaleString()} 字符限制，请精简后再发送`
-      : `Input exceeds ${_MODE_CHAR_LIMIT.toLocaleString()} character limit`);
-    return;
-  }
-
-  if (AppState.mode === 'reviewing') {
-    // 预检：必须有附件或正文，不读 textarea 而是用刚才捕获的 text
-    const payload = Attachments.buildPayload(text || '');
-    if (!payload) {
-      const ta = document.getElementById('input-textarea');
-      ta?.classList.add('shake');
-      setTimeout(() => ta?.classList.remove('shake'), 500);
-      showToast('error', t('ui.err.emptyProof'));
+    if (!text && AppState.mode !== 'reviewing') {
+      const row = textarea?.closest('.textarea-row');
+      row?.classList.add('shake');
+      setTimeout(() => row?.classList.remove('shake'), 500);
       return;
     }
-    if (payload.length > 50000) {
-      showToast('error', t('ui.err.proofTooLong'));
+
+    // 前端输入长度预检（与后端 10000 字符上限一致），避免无谓 422 往返
+    const _MODE_CHAR_LIMIT = 10000;
+    if (text && text.length > _MODE_CHAR_LIMIT && AppState.mode !== 'reviewing') {
+      const isZh = AppState.lang === 'zh';
+      showToast('warning', isZh
+        ? `输入内容超过 ${_MODE_CHAR_LIMIT.toLocaleString()} 字符限制，请精简后再发送`
+        : `Input exceeds ${_MODE_CHAR_LIMIT.toLocaleString()} character limit`);
       return;
     }
-  }
 
-  if (AppState.view !== 'chat') {
-    AppState.set('view', 'chat');
-    // plan F.3 (T52)：避免与左侧已选中的模式 tab 重复 —— title 用第一句用户输入摘要
-    const titleEl = document.getElementById('chat-title');
-    if (titleEl) {
-      const summary = (text || '').replace(/\s+/g, ' ').trim().slice(0, 36);
-      titleEl.textContent = summary || t('topbar.title') || '新对话';
+    if (AppState.mode === 'reviewing') {
+      // 预检：必须有附件或正文，不读 textarea 而是用刚才捕获的 text
+      const payload = Attachments.buildPayload(text || '');
+      if (!payload) {
+        const ta = document.getElementById('input-textarea');
+        ta?.classList.add('shake');
+        setTimeout(() => ta?.classList.remove('shake'), 500);
+        showToast('error', t('ui.err.emptyProof'));
+        return;
+      }
+      if (payload.length > 50000) {
+        showToast('error', t('ui.err.proofTooLong'));
+        return;
+      }
     }
-  }
 
-  textarea.value = '';
-  textarea.style.height = 'auto';
+    if (AppState.view !== 'chat') {
+      AppState.set('view', 'chat');
+      // plan F.3 (T52)：避免与左侧已选中的模式 tab 重复 —— title 用第一句用户输入摘要
+      const titleEl = document.getElementById('chat-title');
+      if (titleEl) {
+        const summary = (text || '').replace(/\s+/g, ' ').trim().slice(0, 36);
+        titleEl.textContent = summary || t('topbar.title') || '新对话';
+      }
+    }
 
-  switch (AppState.mode) {
-    case 'learning':      await handleLearning(text);      break;
-    case 'solving':       await handleSolving(text);       break;
-    case 'reviewing':     await handleReviewing(text);     break;
-    case 'searching':     await handleSearching(text);     break;
-    case 'formalization': await handleFormalization(text); break;
+    textarea.value = '';
+    textarea.style.height = 'auto';
+
+    try {
+      switch (AppState.mode) {
+        case 'learning':      await handleLearning(text);      break;
+        case 'solving':       await handleSolving(text);       break;
+        case 'reviewing':     await handleReviewing(text);     break;
+        case 'searching':     await handleSearching(text);     break;
+        case 'formalization': await handleFormalization(text); break;
+      }
+    } catch (err) {
+      // 失败时恢复输入内容
+      if (savedText && !textarea.value) {
+        textarea.value = savedText;
+        const autoResize = (el) => {
+          if (!el) return;
+          el.style.height = 'auto';
+          el.style.height = Math.min(el.scrollHeight, 400) + 'px';
+        };
+        autoResize(textarea);
+      }
+      throw err;
+    }
+  } finally {
+    // 确保锁始终释放（即使发生异常）
+    _sendLock = false;
   }
 }
 
@@ -5205,7 +5232,41 @@ const ProjectMemory = {
     } catch { return { concepts: [], open_questions: [], sessions: [] }; }
   },
   save(pid, data) {
-    try { localStorage.setItem(this._key(pid), JSON.stringify(data)); } catch {}
+    try {
+      const serialized = JSON.stringify(data);
+      const sizeKB = new Blob([serialized]).size / 1024;
+
+      // 单项大小检查：超过 2MB 自动清理
+      if (sizeKB > 2048) {
+        console.warn(`[ProjectMemory] Project ${pid} data too large: ${sizeKB.toFixed(2)} KB`);
+
+        // 自动清理：仅保留最近 10 个 session
+        if (data.sessions && data.sessions.length > 10) {
+          data.sessions = data.sessions.slice(0, 10);
+          return this.save(pid, data);  // 重试保存
+        }
+      }
+
+      localStorage.setItem(this._key(pid), serialized);
+
+    } catch (err) {
+      console.error(`[ProjectMemory] Failed to save ${pid}:`, err);
+
+      if (err.name === 'QuotaExceededError') {
+        // 存储已满：尝试降级保存核心数据
+        try {
+          const coreData = {
+            concepts: data.concepts || [],
+            open_questions: data.open_questions || [],
+            sessions: (data.sessions || []).slice(0, 5)  // 仅保留最近 5 个
+          };
+          localStorage.setItem(this._key(pid), JSON.stringify(coreData));
+          showToast('warning', 'Storage full, saved core data only');
+        } catch {
+          showToast('error', 'Cannot save data - storage full');
+        }
+      }
+    }
   },
   addSession(pid, { title, mode, ts }) {
     const mem = this.load(pid);
