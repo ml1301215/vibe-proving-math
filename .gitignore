@@ -107,6 +107,13 @@ server_changes.patch
 start_server.bat
 test_*.js
 test_*.html
+_tmp_*.txt
+_tips_*.txt
+wait_tips_*.txt
+
+# ──────── app目录临时文件 ────────
+app/_api_test_*.py
+app/_api_test_*.json
 
 # ──────── 本地计划 / 工作文档 ────────
 PR-TASK-*.md
