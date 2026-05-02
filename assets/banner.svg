@@ -1,87 +1,82 @@
-<svg width="1200" height="280" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="260" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a0a0f;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1a1a24;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#08080c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14141a;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#4a7c9e;stop-opacity:0.6" />
-      <stop offset="100%" style="stop-color:#6a9ac4;stop-opacity:0.8" />
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8b7355;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#b8986f;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#8b7355;stop-opacity:0.3" />
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" />
     </filter>
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="280" fill="url(#bg)"/>
+  <rect width="1200" height="260" fill="url(#bg)"/>
 
-  <!-- Topological structure: abstract fibration -->
-  <g opacity="0.12" stroke="#6a9ac4" fill="none" stroke-width="0.8">
-    <!-- Base manifold -->
-    <ellipse cx="250" cy="140" rx="180" ry="45"/>
-    <!-- Fiber bundle layers -->
-    <path d="M 250,95 Q 350,70 450,95 Q 550,120 650,95 Q 750,70 850,95" stroke-dasharray="4,3"/>
-    <path d="M 250,140 Q 350,115 450,140 Q 550,165 650,140 Q 750,115 850,140"/>
-    <path d="M 250,185 Q 350,160 450,185 Q 550,210 650,185 Q 750,160 850,185" stroke-dasharray="4,3"/>
-    <!-- Vertical fibers -->
-    <line x1="450" y1="95" x2="450" y2="185" opacity="0.3"/>
-    <line x1="650" y1="95" x2="650" y2="185" opacity="0.3"/>
+  <!-- Penrose tiling pattern (abstract, subtle) -->
+  <g opacity="0.08" stroke="url(#gold)" fill="none" stroke-width="0.6">
+    <!-- Kite tiles -->
+    <path d="M 150,80 L 180,120 L 150,160 L 130,120 Z"/>
+    <path d="M 180,120 L 210,160 L 180,200 L 150,160 Z"/>
+    <path d="M 210,80 L 240,120 L 210,160 L 180,120 Z"/>
+
+    <!-- Dart tiles -->
+    <path d="M 270,100 L 285,130 L 270,160 L 255,130 Z"/>
+    <path d="M 285,130 L 300,160 L 285,190 L 270,160 Z"/>
+
+    <!-- Right side mirror -->
+    <path d="M 1050,80 L 1020,120 L 1050,160 L 1070,120 Z"/>
+    <path d="M 1020,120 L 990,160 L 1020,200 L 1050,160 Z"/>
+    <path d="M 990,80 L 960,120 L 990,160 L 1020,120 Z"/>
+    <path d="M 930,100 L 915,130 L 930,160 L 945,130 Z"/>
+    <path d="M 915,130 L 900,160 L 915,190 L 930,160 Z"/>
   </g>
 
-  <!-- Commutative diagram abstraction -->
-  <g opacity="0.08" stroke="#8ab4d4" fill="none" stroke-width="0.6">
-    <circle cx="950" cy="100" r="25"/>
-    <circle cx="1050" cy="100" r="25"/>
-    <circle cx="950" cy="180" r="25"/>
-    <circle cx="1050" cy="180" r="25"/>
-    <path d="M 975,100 L 1025,100" marker-end="url(#arrowhead)"/>
-    <path d="M 950,125 L 950,155" marker-end="url(#arrowhead)"/>
-    <path d="M 1050,125 L 1050,155" marker-end="url(#arrowhead)"/>
-    <path d="M 975,180 L 1025,180" marker-end="url(#arrowhead)"/>
-  </g>
-  <defs>
-    <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-      <polygon points="0 0, 6 3, 0 6" fill="#8ab4d4" opacity="0.08"/>
-    </marker>
-  </defs>
-
-  <!-- Homotopy path -->
-  <g opacity="0.1" stroke="url(#accent)" fill="none" stroke-width="1.2">
-    <path d="M 100,220 Q 200,180 300,210 T 500,200 T 700,210 T 900,200" stroke-dasharray="6,4"/>
-    <path d="M 100,240 Q 200,200 300,230 T 500,220 T 700,230 T 900,220" stroke-dasharray="6,4"/>
+  <!-- Golden ratio spiral (subtle, background) -->
+  <g opacity="0.05" stroke="url(#gold)" fill="none" stroke-width="0.8">
+    <path d="M 100,130 Q 100,100 130,100 Q 160,100 160,130 Q 160,170 130,170 Q 80,170 80,130 Q 80,70 140,70 Q 200,70 200,130" filter="url(#blur)"/>
   </g>
 
-  <!-- Central axis -->
-  <line x1="300" y1="140" x2="900" y2="140" stroke="#4a7c9e" stroke-width="0.5" opacity="0.15"/>
+  <!-- Symmetric geometric accents -->
+  <g opacity="0.12" stroke="#9a8869" fill="none" stroke-width="0.5">
+    <circle cx="360" cy="130" r="40" stroke-dasharray="2,4"/>
+    <circle cx="360" cy="130" r="60" stroke-dasharray="3,6"/>
+    <circle cx="840" cy="130" r="40" stroke-dasharray="2,4"/>
+    <circle cx="840" cy="130" r="60" stroke-dasharray="3,6"/>
+  </g>
+
+  <!-- Center line (subtle) -->
+  <line x1="350" y1="130" x2="850" y2="130" stroke="#8b7355" stroke-width="0.3" opacity="0.2"/>
 
   <!-- Main title -->
-  <text x="600" y="125"
-        font-family="'Palatino Linotype', 'Palatino', 'Georgia', serif"
-        font-size="52"
+  <text x="600" y="120"
+        font-family="'Palatino Linotype', 'Palatino', 'Baskerville', 'Georgia', serif"
+        font-size="48"
         font-weight="300"
-        fill="#e8e8ea"
+        fill="#d8d8da"
         text-anchor="middle"
-        letter-spacing="4"
-        filter="url(#glow)">
+        letter-spacing="6">
     vibe_proving
   </text>
 
   <!-- Tagline -->
-  <text x="600" y="165"
-        font-family="'Palatino Linotype', 'Palatino', 'Georgia', serif"
-        font-size="15"
+  <text x="600" y="155"
+        font-family="'Palatino Linotype', 'Palatino', 'Baskerville', serif"
+        font-size="13"
         font-weight="300"
-        fill="#9a9aa4"
+        fill="#8a8a92"
         text-anchor="middle"
-        letter-spacing="8">
-    MATHEMATICAL REASONING COMPANION
+        letter-spacing="10">
+    MATHEMATICAL  REASONING  SYSTEM
   </text>
 
-  <!-- Bottom line -->
-  <line x1="400" y1="200" x2="800" y2="200" stroke="#4a7c9e" stroke-width="0.8" opacity="0.2"/>
+  <!-- Bottom accent -->
+  <g opacity="0.15">
+    <line x1="450" y1="190" x2="750" y2="190" stroke="url(#gold)" stroke-width="0.6"/>
+    <line x1="470" y1="195" x2="730" y2="195" stroke="#8b7355" stroke-width="0.4"/>
+  </g>
 </svg>

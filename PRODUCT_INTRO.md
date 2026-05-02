@@ -144,5 +144,4 @@ Test coverage includes:
 - [TheoremSearch](https://www.theoremsearch.com) — Theorem database
 - [Aletheia](https://arxiv.org/abs/2602.10177) — Generator–Verifier–Reviser architecture
 - [LATRACE](https://github.com/zxxz1000/LATRACE) — Memory system
-- [Lean 4](https://lean-lang.org) — Proof assistant
-- [Mathlib](https://leanprover-community.github.io) — Lean mathematics library
+- [Rethlas](https://github.com/frenzymath/Rethlas) — Architecture inspiration
