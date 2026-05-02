@@ -33,13 +33,13 @@ AI-driven mathematical research assistant for students and researchers
 <td width="50%">
 
 **Learning Mode**  
-https://github.com/user-attachments/assets/588b3f73-7b4f-4040-acd2-d7243c10b3dc
+![Learning Mode Demo](https://github.com/user-attachments/assets/588b3f73-7b4f-4040-acd2-d7243c10b3dc)
 
 </td>
 <td width="50%">
 
 **Problem Solving**  
-https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920
+![Problem Solving Demo](https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920)
 
 </td>
 </tr>
@@ -47,13 +47,13 @@ https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920
 <td width="50%">
 
 **Proof Review**  
-https://github.com/user-attachments/assets/186e9541-b64f-419f-9682-94298e61d189
+![Proof Review Demo](https://github.com/user-attachments/assets/186e9541-b64f-419f-9682-94298e61d189)
 
 </td>
 <td width="50%">
 
 **Literature Search**  
-https://github.com/user-attachments/assets/ce5e17b3-e9e9-45ce-a038-c2b6b672d440
+![Literature Search Demo](https://github.com/user-attachments/assets/ce5e17b3-e9e9-45ce-a038-c2b6b672d440)
 
 </td>
 </tr>

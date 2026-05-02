@@ -33,13 +33,13 @@
 <td width="50%">
 
 **学习模式**  
-https://github.com/user-attachments/assets/588b3f73-7b4f-4040-acd2-d7243c10b3dc
+![学习模式演示](https://github.com/user-attachments/assets/588b3f73-7b4f-4040-acd2-d7243c10b3dc)
 
 </td>
 <td width="50%">
 
 **问题求解**  
-https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920
+![问题求解演示](https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920)
 
 </td>
 </tr>
@@ -47,13 +47,13 @@ https://github.com/user-attachments/assets/ff33ef0e-b330-4d79-bb06-3a0c4cd9f920
 <td width="50%">
 
 **证明审查**  
-https://github.com/user-attachments/assets/186e9541-b64f-419f-9682-94298e61d189
+![证明审查演示](https://github.com/user-attachments/assets/186e9541-b64f-419f-9682-94298e61d189)
 
 </td>
 <td width="50%">
 
 **文献检索**  
-https://github.com/user-attachments/assets/ce5e17b3-e9e9-45ce-a038-c2b6b672d440
+![文献检索演示](https://github.com/user-attachments/assets/ce5e17b3-e9e9-45ce-a038-c2b6b672d440)
 
 </td>
 </tr>
