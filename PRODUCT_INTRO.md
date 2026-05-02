@@ -1,6 +1,6 @@
 # Product Overview
 
-`vibe_proving` is an AI platform for math researchers. The platform integrates language models with theorem retrieval to support interactive workflows across learning, problem-solving, proof review, and knowledge discovery.
+`vibe_proving` is an AI platform for students and researchers in mathematics. It integrates language models with theorem retrieval to support interactive workflows across learning, problem-solving, proof review, and knowledge discovery.
 
 ## Design Philosophy
 
@@ -12,7 +12,7 @@ Unlike general-purpose AI assistants, vibe_proving prioritizes mathematical corr
 4. **Confidence Reporting** — Transparent uncertainty assessment with explicit confidence scores
 5. **Theorem Retrieval** — Semantic search across 9M+ indexed theorems from mathematical literature
 
-This architecture reduces hallucination risk in mathematical contexts where accuracy is non-negotiable.
+This architecture reduces hallucination risk in mathematical contexts where accuracy is critical.
 
 ## Core Capabilities
 
@@ -28,7 +28,7 @@ Target difficulty levels: undergraduate or graduate.
 
 ### Solving Mode
 
-Proof generation pipeline with quality control:
+Proof generation pipeline with verification:
 1. **Direct Retrieval**: Check if problem already solved in theorem databases
 2. **Proof Generation**: Create initial draft with reasoning steps
 3. **Independent Verification**: Validate logic without generator bias
@@ -55,6 +55,16 @@ Semantic theorem retrieval:
 - Similarity scoring and ranking
 - Direct links to original papers
 
+### Formalization
+
+Natural language → Lean 4 translation:
+1. Keyword extraction from natural language statement
+2. Mathlib retrieval for relevant definitions and lemmas
+3. Blueprint planning (proof structure)
+4. Code generation
+5. Verification (local or remote)
+6. Iterative repair based on compiler errors
+
 ## Technical Architecture
 
 ```
@@ -75,7 +85,7 @@ Pipeline    Pipeline   Pipeline  Pipeline
 (OpenAI)    (Citation)      (OCR)
 ```
 
-### Quality Control Mechanisms
+### Components
 
 1. **External Citation Database**: TheoremSearch API prevents hallucinated references
 2. **Independent Verification**: Proof validator operates without generator context
@@ -90,11 +100,11 @@ Pipeline    Pipeline   Pipeline  Pipeline
 - **LLM Integration**: OpenAI-compatible interface (model-agnostic)
 - **Theorem Database**: TheoremSearch API
 - **PDF Processing**: Nanonets OCR for formula-preserving extraction
-- **Formal Verification** (Beta): Harmonic Aristotle for Lean 4
+- **Formalization**: Harmonic Aristotle for Lean 4
 
 ## Deployment
 
-Configuration via `config.toml`:
+Configuration via `config.toml` or web interface (recommended):
 
 ```toml
 [llm]
@@ -110,25 +120,6 @@ api_key = "your-key"  # Optional, for PDF review
 ```
 
 Minimum requirement: LLM API key. Optional services enhance functionality but are not required for core operations.
-
-## Testing
-
-```bash
-pytest tests -m "not slow"  # Fast regression
-pytest tests                # Full suite (requires API keys)
-```
-
-Coverage includes configuration, LLM integration, all operational modes, citation verification, LaTeX sanitization, and error handling.
-
-## Current Status
-
-| Module | Status | Notes |
-|--------|--------|-------|
-| Learning | Stable | Streaming explanations with memory integration |
-| Solving | Stable | GVR pipeline with citation checking |
-| Review | Stable | Quality depends on OCR backend |
-| Search | Stable | Direct TheoremSearch integration |
-| Formalization | Beta | Lean 4 translation for research users |
 
 ## Design Constraints
 
