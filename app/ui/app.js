@@ -5969,7 +5969,7 @@ function bindEvents() {
   const LLM_PRESETS = {
     deepseek: {
       base_url: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-pro',
     },
     gemini: {
       base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
