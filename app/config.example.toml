@@ -29,6 +29,8 @@ timeout  = 60
 
 [latrace]
 # 可选：LATRACE 记忆服务，不配置不影响核心功能。
+# 默认关闭；只有本地/远端 LATRACE 服务可用时再改为 true。
+enabled     = false
 base_url    = "http://localhost:8000"
 tenant_id   = "vibe-proving"
 timeout     = 10

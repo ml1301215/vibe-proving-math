@@ -46,6 +46,28 @@ setup_logging()
 import logging
 logger = logging.getLogger("api.server")
 
+
+async def _ingest_memory_best_effort(user_id: str, project_id: str, turns: list[dict]) -> None:
+    """Run LATRACE ingest outside the response path and always close its client."""
+    try:
+        from core.config import latrace_enabled
+        if not latrace_enabled():
+            return
+        from core.memory import MemoryClient
+        mem_client = MemoryClient(user_id=user_id or "anonymous")
+    except Exception as exc:
+        logger.debug("memory ingest disabled/skipped: %s", exc)
+        return
+    try:
+        await asyncio.wait_for(mem_client.ingest(project_id or "default", turns), timeout=2.0)
+    except Exception as exc:
+        logger.debug("memory ingest skipped: %s", exc)
+    finally:
+        try:
+            await mem_client.aclose()
+        except Exception:
+            pass
+
 app = FastAPI(
     title="vibe_proving API",
     description="数学工作者的推理伙伴 —— 开源、低成本、双模式",
@@ -395,21 +417,29 @@ async def learn(req: LearnRequest):
     if req.stream:
         async def _gen():
             # 记忆：检索历史（若 LATRACE 可用，静默降级）
+            mem_client = None
+            kb_text = None
             try:
-                from core.memory import MemoryClient
-                mem_client = MemoryClient(user_id=req.user_id or "anonymous")
-                memories = await asyncio.wait_for(
-                    mem_client.retrieve(req.project_id or "default", req.statement),
-                    timeout=5,
-                )
-                kb_text = None
-                if memories:
-                    kb_text = mem_client.format_memories_for_prompt(memories)
-                    yield f"<!-- memory_retrieved: {len(memories)} items -->"
-            except Exception:
+                from core.config import latrace_enabled
+                if latrace_enabled():
+                    from core.memory import MemoryClient
+                    mem_client = MemoryClient(user_id=req.user_id or "anonymous")
+                    memories = await asyncio.wait_for(
+                        mem_client.retrieve(req.project_id or "default", req.statement),
+                        timeout=2.0,
+                    )
+                    if memories:
+                        kb_text = mem_client.format_memories_for_prompt(memories)
+                        yield f"<!-- memory_retrieved: {len(memories)} items -->"
+            except Exception as exc:
                 logger.debug("learn: memory retrieve skipped (LATRACE unavailable)")
-                mem_client = None
-                kb_text = None
+            finally:
+                if mem_client is not None:
+                    try:
+                        await mem_client.aclose()
+                    except Exception:
+                        pass
+
             async for chunk in stream_learning_pipeline(
                 req.statement,
                 level=req.level,
@@ -420,16 +450,14 @@ async def learn(req: LearnRequest):
                 yield chunk
 
             # 记忆：异步写入（静默降级）
-            if mem_client is not None:
-                try:
-                    asyncio.create_task(
-                        mem_client.ingest(req.project_id or "default", [
-                            {"role": "user", "text": f"学习模式: {req.statement}"},
-                            {"role": "assistant", "text": f"[学习模式输出已完成]"},
-                        ])
-                    )
-                except Exception:
-                    logger.debug("learn: memory ingest skipped")
+            asyncio.create_task(_ingest_memory_best_effort(
+                req.user_id or "anonymous",
+                req.project_id or "default",
+                [
+                    {"role": "user", "text": f"学习模式: {req.statement}"},
+                    {"role": "assistant", "text": f"[学习模式输出已完成]"},
+                ],
+            ))
 
         return StreamingResponse(
             _sse_generator(_gen()),

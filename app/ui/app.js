@@ -1165,7 +1165,7 @@ window.copyCodeBlock = function(btn) {
 const AppState = {
   view: 'home',
   mode: 'learning',
-  model: localStorage.getItem('vp_custom_model') || 'gemini-2.5-flash',
+  model: 'gemini-2.5-flash',
   lang: 'zh',
   projectId: 'default',
   projectName: '',
@@ -1862,34 +1862,9 @@ const UI = {
       searching:     'gemini-2.5-flash',
       formalization: 'gpt-5.3-codex',
     };
-    const _MODEL_LABELS = {
-      'gemini-2.5-flash':         'Gemini 2.5 Flash',
-      'gemini-2.5-pro':           'Gemini 2.5 Pro',
-      'gemini-3.1-pro-preview':   'Gemini 3.1 Pro',
-      'gpt-5.3-codex':            'GPT 5.3 Codex',
-      'gpt-5.4':                  'GPT 5.4',
-      'gpt-5':                    'GPT-5',
-      'gpt-4o':                   'GPT-4o',
-      'claude-sonnet-4-6':        'Claude Sonnet 4.6',
-      'claude-opus-4-7':          'Claude Opus 4.7',
-      'o3':                       'o3',
-      'o4-mini':                  'o4-mini',
-      'kimi-k2.6':                'Kimi K2.6',
-      'deepseek-v4-pro':          'DeepSeek V4 Pro',
-      'deepseek-v4-flash':        'DeepSeek V4 Flash',
-      'deepseek-chat':            'DeepSeek Chat',
-    };
-
-    // 检查是否有自定义配置的模型（通过设置面板保存的）
-    const customModel = localStorage.getItem('vp_custom_model');
-    const defaultModel = customModel || _MODE_MODELS[mode] || 'gemini-2.5-flash';
-
-    AppState.model = defaultModel;
-    const chipLabel = document.getElementById('model-chip-label');
-    if (chipLabel) chipLabel.textContent = _MODEL_LABELS[defaultModel] || defaultModel;
-    document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
-      li.setAttribute('aria-selected', li.dataset.value === defaultModel ? 'true' : 'false');
-    });
+    const configuredModel = AppState.config?.llm?.model;
+    const defaultModel = configuredModel || _MODE_MODELS[mode] || 'gemini-2.5-flash';
+    setActiveModel(defaultModel);
 
     _syncModeChipLabel();
     _syncModeTabs();
@@ -1982,6 +1957,35 @@ function updateInputPlaceholder() {
     searching: 'input.searchingPlaceholder',
   };
   ta.placeholder = keyMap[AppState.mode] ? t(keyMap[AppState.mode]) : t('input.placeholder');
+}
+
+const MODEL_LABELS = {
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+  'gpt-5.3-codex': 'GPT 5.3 Codex',
+  'gpt-5.4': 'GPT 5.4',
+  'gpt-5': 'GPT-5',
+  'gpt-4o': 'GPT-4o',
+  'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+  'claude-opus-4-7': 'Claude Opus 4.7',
+  'o3': 'o3',
+  'o4-mini': 'o4-mini',
+  'kimi-k2.6': 'Kimi K2.6',
+  'deepseek-v4-pro': 'DeepSeek V4 Pro',
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'deepseek-chat': 'DeepSeek Chat',
+};
+
+function setActiveModel(model, label) {
+  const value = (model || '').trim();
+  if (!value) return;
+  AppState.model = value;
+  const chipLabel = document.getElementById('model-chip-label');
+  if (chipLabel) chipLabel.textContent = label || MODEL_LABELS[value] || value;
+  document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
+    li.setAttribute('aria-selected', li.dataset.value === value ? 'true' : 'false');
+  });
 }
 
 function _cancelActiveRunForModeSwitch() {
@@ -2988,6 +2992,7 @@ function applyConfigToUi(cfg) {
   const modelEl = document.getElementById('input-llm-model');
   if (baseEl) baseEl.value = llm.base_url || '';
   if (modelEl) modelEl.value = llm.model || '';
+  if (llm.model) setActiveModel(llm.model);
   updateConfigState(llm, cfg.config_path || '');
 }
 
@@ -6029,15 +6034,8 @@ function bindEvents() {
 
   initChip('mode-chip', 'mode-dropdown', (value) => switchMode(value));
   initChip('model-chip', 'model-dropdown', (value, label) => {
-    AppState.model = value;
-    const chipLabel = document.getElementById('model-chip-label');
-    if (chipLabel) {
-      const shortName = label.split('\n').map(s => s.trim()).filter(Boolean).join(' ');
-      chipLabel.textContent = shortName;
-    }
-    document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
-      li.setAttribute('aria-selected', li.dataset.value === value ? 'true' : 'false');
-    });
+    const shortName = label.split('\n').map(s => s.trim()).filter(Boolean).join(' ');
+    setActiveModel(value, shortName);
   });
 
   // 模型信息卡片（Cursor 风格：hover 显示模型介绍）
@@ -6090,30 +6088,8 @@ function bindEvents() {
       if (btn) { btn.disabled = true; btn.textContent = t('panel.saving'); }
       await apiPost('/config/llm', payload);
 
-      // 保存成功后，存储自定义模型到 localStorage
       if (payload.model) {
-        localStorage.setItem('vp_custom_model', payload.model);
-        AppState.model = payload.model;
-        const chipLabel = document.getElementById('model-chip-label');
-        if (chipLabel) {
-          // 尝试从已知标签中获取，否则直接显示模型名
-          const _MODEL_LABELS = {
-            'gemini-2.5-flash': 'Gemini 2.5 Flash',
-            'gemini-2.5-pro': 'Gemini 2.5 Pro',
-            'gpt-5.3-codex': 'GPT-5.3 Codex',
-            'gpt-5': 'GPT-5',
-            'gpt-4o': 'GPT-4o',
-            'claude-sonnet-4-6': 'Claude Sonnet 4.6',
-            'claude-opus-4-7': 'Claude Opus 4.7',
-            'o3': 'o3',
-            'o4-mini': 'o4-mini',
-            'kimi-k2.6': 'Kimi K2.6',
-            'deepseek-v4-pro': 'DeepSeek V4 Pro',
-            'deepseek-v4-flash': 'DeepSeek V4 Flash',
-            'deepseek-chat': 'DeepSeek Chat',
-          };
-          chipLabel.textContent = _MODEL_LABELS[payload.model] || payload.model;
-        }
+        setActiveModel(payload.model);
       }
 
       if (btn) { btn.textContent = t('panel.saved'); }
@@ -6340,6 +6316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     refreshHistorySidebar();
     _syncModeTabs();
+    localStorage.removeItem('vp_custom_model');
     loadAppConfig();
     setTimeout(checkHealth, 1200);
 
