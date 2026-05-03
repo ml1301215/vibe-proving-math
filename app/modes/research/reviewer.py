@@ -787,8 +787,8 @@ class TheoremReview:
             "parser_source": _sanitize_review_text(self.theorem.parser_source or ""),
             "quality_score": self.theorem.quality_score,
             "review_confidence": self.theorem.review_confidence,
-            "statement": _sanitize_review_text(_truncate_preserving_math(self.theorem.statement, max_chars=520)),
-            "proof": _sanitize_review_text(_truncate_preserving_math(self.theorem.proof or "", max_chars=800)),
+            "statement": _sanitize_review_text(_truncate_preserving_math(self.theorem.statement, max_chars=2000)),
+            "proof": _sanitize_review_text(_truncate_preserving_math(self.theorem.proof or "", max_chars=3000)),
             "verdict": self.verdict,
             "issues": [i.to_dict() for i in self.issues],
             "citation_checks": [
@@ -1152,7 +1152,8 @@ async def review_text(
         )
         cleaned = cleaned[:_MAX_REVIEW_TEXT]
 
-    await _emit(progress, "parse", "正在解析输入文本…")
+    parse_msg = "正在解析输入文本…" if lang == "zh" else "Parsing input text..."
+    await _emit(progress, "parse", parse_msg)
 
     # 路径 1：结构化抽取
     pairs: list[TheoremProofPair] = _extract_tex_environments(cleaned, source=source)
@@ -1263,7 +1264,8 @@ async def review_paper_pages(
     if not clean_pages:
         raise ValueError("论文内容不能为空")
 
-    await _emit(progress, "parse_pdf", f"正在解析论文页面（{len(clean_pages)} 页）…")
+    parse_pdf_msg = f"正在解析论文页面（{len(clean_pages)} 页）…" if lang == "zh" else f"Parsing paper pages ({len(clean_pages)} pages)..."
+    await _emit(progress, "parse_pdf", parse_pdf_msg)
     document = build_structured_document(clean_pages, source=source)
     sections = document.sections
     if not sections:
@@ -1456,7 +1458,8 @@ async def review_paper_images(
     lang: str = "zh",
 ) -> ReviewReport:
     """图片论文审查工作流：多模态抽取命题后逐条审查。"""
-    await _emit(progress, "parse_image", f"正在解析图片输入（{len(images)} 张）…")
+    parse_image_msg = f"正在解析图片输入（{len(images)} 张）…" if lang == "zh" else f"Parsing image input ({len(images)} images)..."
+    await _emit(progress, "parse_image", parse_image_msg)
     candidates = await extract_statement_candidates_from_images(
         images,
         source=source,

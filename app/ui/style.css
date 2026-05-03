@@ -1056,6 +1056,17 @@ kbd {
   cursor: not-allowed;
 }
 
+/* Regenerate button styling */
+.msg-regenerate-btn {
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+.msg-regenerate-btn:hover {
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
 /* ── msg-content：ChatGPT 风格 Markdown 渲染 ───────────────────────────── */
 .msg-content {
   font-size: 14.5px;
@@ -2356,6 +2367,35 @@ html[data-theme="dark"] .section-status-done { color: #4ade80; }
 
 .review-status-pill.done .spinner {
   display: none;
+}
+
+/* 通用进度条 (用于所有模式) */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.progress-bar-bg {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .5s ease;
+  width: 0%;
+}
+.progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* PDF 审查进度条 */

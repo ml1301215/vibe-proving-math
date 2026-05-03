@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional
 
-from core.llm import chat_json
+from core.llm import chat_json, lang_sys_suffix
 from skills.search_theorems import search_theorems, TheoremMatch
 
 
@@ -152,14 +152,16 @@ async def prerequisite_map(
     level: str = "undergraduate",
     enrich_with_search: bool = True,
     model: Optional[str] = None,
+    lang: Optional[str] = None,
 ) -> PrerequisiteMap:
     """两阶段 LLM + TheoremSearch 前置知识图谱。"""
+    _ls = lang_sys_suffix(lang)
 
     # ── Step 1: 生成候选列表 ─────────────────────────────────────────────────
     try:
         raw = await chat_json(
             _PREREQ_GENERATE_USER.format(statement=statement, level=level),
-            system=_PREREQ_GENERATE_SYSTEM,
+            system=_PREREQ_GENERATE_SYSTEM + _ls,
             model=model,
         )
         raw_data = json.loads(raw) if isinstance(raw, str) else raw
@@ -201,7 +203,7 @@ async def prerequisite_map(
                 statement=statement,
                 candidates_json=candidates_for_prompt,
             ),
-            system=_PREREQ_VALIDATE_SYSTEM,
+            system=_PREREQ_VALIDATE_SYSTEM + _ls,
             model=model,
         )
         val_data = json.loads(val_raw) if isinstance(val_raw, str) else val_raw

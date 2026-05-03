@@ -404,7 +404,7 @@ async def stream_learning_pipeline(
         get_mactutor_context(statement, max_chars=2500)
     )
     prereq_task = asyncio.create_task(
-        prerequisite_map(statement, level=level, enrich_with_search=True, model=model)
+        prerequisite_map(statement, level=level, enrich_with_search=True, model=model, lang=lang)
     )
 
     async for chunk in stream_card_background(
@@ -448,7 +448,7 @@ async def stream_learning_section(
 
     if sid == "prereq":
         task = asyncio.create_task(
-            prerequisite_map(statement, level=level, enrich_with_search=True, model=model)
+            prerequisite_map(statement, level=level, enrich_with_search=True, model=model, lang=lang)
         )
         async for c in stream_card_prereq(statement, task, level=level, model=model, lang=lang):
             yield c
