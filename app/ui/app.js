@@ -74,6 +74,7 @@ const I18N = {
       skSend: '发送', skNewline: '换行', skStop: '停止生成',
       skFocus: '聚焦输入框', skMode: '切换模式',
       llmConfig: 'LLM API 配置', getKey: '获取 Key ↗',
+      configUnknown: '未读取配置', configKeyReady: '已配置 API Key', configKeyMissing: '未配置 API Key',
       saveLlm: '保存配置',
       nanonetsCfg: 'Nanonets PDF 解析', getNanoneetsKey: '申请 API Key ↗',
       saveNanonets: '保存',
@@ -252,6 +253,7 @@ const I18N = {
       skSend: 'Send', skNewline: 'Newline', skStop: 'Stop',
       skFocus: 'Focus input', skMode: 'Switch mode',
       llmConfig: 'LLM API Config', getKey: 'Get Key ↗',
+      configUnknown: 'Config not loaded', configKeyReady: 'API Key configured', configKeyMissing: 'API Key missing',
       saveLlm: 'Save Config',
       nanonetsCfg: 'Nanonets PDF Parsing', getNanoneetsKey: 'Apply API Key ↗',
       saveNanonets: 'Save',
@@ -520,7 +522,7 @@ function applyLang(lang) {
   });
 
   // 若提示条正在显示，立即切换为新语言内容
-  const tipEl = document.getElementById('wait-tip-bar');
+  const tipEl = _waitTipEl || document.querySelector('[data-wait-tip="true"]');
   if (tipEl) {
     const tips = _WAIT_TIPS[lang] || _WAIT_TIPS.en;
     const txtEl = tipEl.querySelector('.wait-tip-text');
@@ -1026,7 +1028,7 @@ function _renderOneSegment(seg) {
   if (_MD_CACHE.has(seg)) return _MD_CACHE.get(seg);
   let html;
   try {
-    html = marked.parse(autoWrapMath(seg));
+    html = marked.parse(preRenderDisplayMath(autoWrapMath(seg)));
   } catch {
     html = `<pre>${escapeHtml(seg)}</pre>`;
   }
@@ -1058,7 +1060,7 @@ function renderStreamingMarkdown(text) {
     const isTrailing = (i === parts.length - 1) && !text.endsWith('\n\n');
     if (isTrailing) {
       try {
-        out += marked.parse(autoWrapMath(p));
+        out += marked.parse(preRenderDisplayMath(autoWrapMath(p)));
       } catch {
         out += `<pre>${escapeHtml(p)}</pre>`;
       }
@@ -1067,6 +1069,24 @@ function renderStreamingMarkdown(text) {
     }
   }
   return out;
+}
+
+function preRenderDisplayMath(text) {
+  if (!text || typeof katex === 'undefined') return text;
+  const renderDisplay = (raw, expr) => {
+    try {
+      return `\n\n<div class="katex-display">${katex.renderToString(expr.trim(), {
+        displayMode: true,
+        throwOnError: false,
+        output: 'html',
+      })}</div>\n\n`;
+    } catch {
+      return raw;
+    }
+  };
+  return text
+    .replace(/\$\$([\s\S]*?)\$\$/g, renderDisplay)
+    .replace(/\\\[([\s\S]*?)\\\]/g, renderDisplay);
 }
 
 /** plan D：KaTeX 兜底。出错时不再显示裸 $...$，改用等宽样式提示。 */
@@ -1145,10 +1165,11 @@ window.copyCodeBlock = function(btn) {
 const AppState = {
   view: 'home',
   mode: 'learning',
-  model: localStorage.getItem('vp_custom_model') || 'gemini-2.5-flash',
+  model: 'gemini-2.5-flash',
   lang: 'zh',
   projectId: 'default',
   projectName: '',
+  config: null,
   userId: (() => {
     let uid = localStorage.getItem('vp_uid');
     if (!uid) { uid = 'user-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('vp_uid', uid); }
@@ -1841,34 +1862,9 @@ const UI = {
       searching:     'gemini-2.5-flash',
       formalization: 'gpt-5.3-codex',
     };
-    const _MODEL_LABELS = {
-      'gemini-2.5-flash':         'Gemini 2.5 Flash',
-      'gemini-2.5-pro':           'Gemini 2.5 Pro',
-      'gemini-3.1-pro-preview':   'Gemini 3.1 Pro',
-      'gpt-5.3-codex':            'GPT 5.3 Codex',
-      'gpt-5.4':                  'GPT 5.4',
-      'gpt-5':                    'GPT-5',
-      'gpt-4o':                   'GPT-4o',
-      'claude-sonnet-4-6':        'Claude Sonnet 4.6',
-      'claude-opus-4-7':          'Claude Opus 4.7',
-      'o3':                       'o3',
-      'o4-mini':                  'o4-mini',
-      'kimi-k2.6':                'Kimi K2.6',
-      'deepseek-v4-pro':          'DeepSeek V4 Pro',
-      'deepseek-v4-flash':        'DeepSeek V4 Flash',
-      'deepseek-chat':            'DeepSeek Chat',
-    };
-
-    // 检查是否有自定义配置的模型（通过设置面板保存的）
-    const customModel = localStorage.getItem('vp_custom_model');
-    const defaultModel = customModel || _MODE_MODELS[mode] || 'gemini-2.5-flash';
-
-    AppState.model = defaultModel;
-    const chipLabel = document.getElementById('model-chip-label');
-    if (chipLabel) chipLabel.textContent = _MODEL_LABELS[defaultModel] || defaultModel;
-    document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
-      li.setAttribute('aria-selected', li.dataset.value === defaultModel ? 'true' : 'false');
-    });
+    const configuredModel = AppState.config?.llm?.model;
+    const defaultModel = configuredModel || _MODE_MODELS[mode] || 'gemini-2.5-flash';
+    setActiveModel(defaultModel);
 
     _syncModeChipLabel();
     _syncModeTabs();
@@ -1961,6 +1957,67 @@ function updateInputPlaceholder() {
     searching: 'input.searchingPlaceholder',
   };
   ta.placeholder = keyMap[AppState.mode] ? t(keyMap[AppState.mode]) : t('input.placeholder');
+}
+
+const MODEL_LABELS = {
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+  'gpt-5.3-codex': 'GPT 5.3 Codex',
+  'gpt-5.4': 'GPT 5.4',
+  'gpt-5': 'GPT-5',
+  'gpt-4o': 'GPT-4o',
+  'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+  'claude-opus-4-7': 'Claude Opus 4.7',
+  'o3': 'o3',
+  'o4-mini': 'o4-mini',
+  'kimi-k2.6': 'Kimi K2.6',
+  'deepseek-v4-pro': 'DeepSeek V4 Pro',
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'deepseek-chat': 'DeepSeek Chat',
+};
+
+function setActiveModel(model, label) {
+  const value = (model || '').trim();
+  if (!value) return;
+  AppState.model = value;
+  const chipLabel = document.getElementById('model-chip-label');
+  if (chipLabel) chipLabel.textContent = label || MODEL_LABELS[value] || value;
+  document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
+    li.setAttribute('aria-selected', li.dataset.value === value ? 'true' : 'false');
+  });
+}
+
+function _cancelActiveRunForModeSwitch() {
+  if (!AppState.isStreaming) return;
+  try { AppState._abortController?.abort(); } catch {}
+  stopWaitTips();
+  _stopReviewWaitTips(null);
+  AppState.set('isStreaming', false);
+  _sendLock = false;
+}
+
+function switchMode(mode, opts = {}) {
+  if (!mode) return;
+  if (mode === 'formalization') {
+    window.open('https://aristotle.harmonic.fun/dashboard', '_blank', 'noopener');
+    return;
+  }
+  if (mode === AppState.mode && AppState.view === 'chat' && !opts.force) return;
+  _cancelActiveRunForModeSwitch();
+
+  if (opts.resetChat !== false) {
+    const container = document.getElementById('chat-container');
+    if (container) container.innerHTML = '';
+    AppState.history = [];
+  }
+
+  AppState.set('mode', mode);
+  AppState.set('view', 'chat');
+  const titleEl = document.getElementById('chat-title');
+  if (titleEl) titleEl.textContent = t(`modes.${mode}`);
+  _ensureChatEmptyState();
+  document.getElementById('input-textarea')?.focus();
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2593,6 +2650,7 @@ let _waitTipTimer = null;
 let _waitTipIdx = 0;
 let _waitTipInterval = 8000;   // 固定 8 秒轮换间隔
 let _waitTipAppearTimer = null; // 延迟出现的计时器
+let _waitTipEl = null;
 
 // PDF 审查进度等待提示（单独管理，不影响 solve 等待 tips）
 let _rvWaitTipTimer = null;
@@ -2646,6 +2704,7 @@ function _renderMathText(text) {
 
 function startWaitTips(containerEl, opts) {
   opts = opts || {};
+  stopWaitTips();
   if (_waitTipTimer || _waitTipAppearTimer) return;
   _waitTipIdx = Math.floor(Math.random() * (_waitTipsShuffled.en.length));
   _waitTipInterval = 9000;
@@ -2662,8 +2721,9 @@ function startWaitTips(containerEl, opts) {
 
     const bar = document.createElement('div');
     bar.className = 'review-wait-tip';
-    bar.id = 'wait-tip-bar';
+    bar.dataset.waitTip = 'true';
     bar.innerHTML = _renderMathText(tips[_waitTipIdx % tips.length]);
+    _waitTipEl = bar;
     containerEl.appendChild(bar);
     requestAnimationFrame(() => {
       renderKatexFallback(bar);
@@ -2675,7 +2735,7 @@ function startWaitTips(containerEl, opts) {
         _waitTipTimer = null;
         const curTips = getTips();
         _waitTipIdx = (_waitTipIdx + 1) % curTips.length;
-        const el = document.getElementById('wait-tip-bar');
+        const el = _waitTipEl;
         if (!el) return;
         el.innerHTML = _renderMathText(curTips[_waitTipIdx]);
         renderKatexFallback(el);
@@ -2701,7 +2761,8 @@ function _detectLang(text) {
 function stopWaitTips() {
   if (_waitTipAppearTimer) { clearTimeout(_waitTipAppearTimer); _waitTipAppearTimer = null; }
   if (_waitTipTimer) { clearTimeout(_waitTipTimer); _waitTipTimer = null; }
-  const el = document.getElementById('wait-tip-bar');
+  const el = _waitTipEl || document.querySelector('[data-wait-tip="true"]');
+  _waitTipEl = null;
   if (el) {
     el.classList.remove('visible');
     setTimeout(() => el.remove(), 400);
@@ -2911,6 +2972,47 @@ const AppStream = {
    11. API 封装
 ───────────────────────────────────────────────────────────── */
 const API_BASE = '';
+
+function updateConfigState(llm = {}, configPath = '') {
+  const badge = document.getElementById('llm-config-state');
+  const source = document.getElementById('llm-config-source');
+  const configured = !!llm.api_key_configured;
+  if (badge) {
+    badge.textContent = configured ? t('panel.configKeyReady') : t('panel.configKeyMissing');
+    badge.className = `config-state-badge ${configured ? 'ok' : 'unavailable'}`;
+  }
+  if (source) source.textContent = configPath || '';
+}
+
+function applyConfigToUi(cfg) {
+  if (!cfg) return;
+  AppState.config = cfg;
+  const llm = cfg.llm || {};
+  const baseEl = document.getElementById('input-llm-base-url');
+  const modelEl = document.getElementById('input-llm-model');
+  if (baseEl) baseEl.value = llm.base_url || '';
+  if (modelEl) modelEl.value = llm.model || '';
+  if (llm.model) setActiveModel(llm.model);
+  updateConfigState(llm, cfg.config_path || '');
+}
+
+async function loadAppConfig() {
+  try {
+    const cfg = await apiFetch('/config');
+    applyConfigToUi(cfg);
+    return cfg;
+  } catch (err) {
+    const badge = document.getElementById('llm-config-state');
+    const source = document.getElementById('llm-config-source');
+    if (badge) {
+      badge.textContent = t('panel.configUnknown');
+      badge.className = 'config-state-badge unknown';
+    }
+    if (source) source.textContent = '';
+    console.warn('Config load failed', err);
+    return null;
+  }
+}
 
 async function apiSSE(endpoint, body, handlers) {
   const { onChunk, onStatus, onReasoning, onDone, onError } = handlers;
@@ -3711,6 +3813,7 @@ async function handleSolving(statement) {
       return;
     }
     AppState.set('isStreaming', false);
+    stopWaitTips();
     addErrorInline(contentEl, t('ui.err.solving', { e: err.message || err }));
     showToast('error', err.message || String(err));
     return;
@@ -5757,15 +5860,9 @@ async function checkHealth() {
     setStatus('status-nanonets', nanStatus === 'ok' ? 'ok' : nanStatus);
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot online'; }
 
-    // 回填 LLM 配置（api_key 不回显）
     const llmInfo = data.llm || {};
-    if (llmInfo.base_url) {
-      const el = document.getElementById('input-llm-base-url');
-      if (el && !el.value) el.value = llmInfo.base_url;
-    }
-    if (llmInfo.model) {
-      const el = document.getElementById('input-llm-model');
-      if (el && !el.value) el.value = llmInfo.model;
+    if (!AppState.config && (llmInfo.base_url || llmInfo.model)) {
+      applyConfigToUi({ llm: llmInfo, config_path: '' });
     }
   } catch (err) {
     clearTimeout(timer);
@@ -5832,15 +5929,7 @@ function bindEvents() {
         return;
       }
       if (mode) {
-        // 每次从主界面进入模块时，开启新会话（清空旧内容）
-        const container = document.getElementById('chat-container');
-        if (container) container.innerHTML = '';
-        AppState.history = [];
-        AppState.set('mode', mode);
-        AppState.set('view', 'chat');
-        const titleEl = document.getElementById('chat-title');
-        if (titleEl) titleEl.textContent = t(`modes.${mode}`);
-        document.getElementById('input-textarea')?.focus();
+        switchMode(mode, { force: true });
       } else if (action === 'open-projects') {
         openModal('projects-modal');
       } else if (action === 'open-history') {
@@ -5854,35 +5943,12 @@ function bindEvents() {
     });
   });
 
-  // 顶部 Mode Tabs - 仅作为显示，不可点击切换（用户必须返回主界面再点击卡片切换）
-  // 移除点击事件，使顶栏Tab仅用于显示当前模式
-  /*
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const mode = tab.dataset.mode;
-      if (mode === 'formalization') {
-        window.open('https://aristotle.harmonic.fun/dashboard', '_blank', 'noopener');
-        return;
-      }
-      if (mode === AppState.mode && AppState.view === 'chat') return;
-      // 切换模式前先中止当前流式请求，避免后台 fetch 继续写入已清空的 DOM
-      if (AppState.isStreaming && AppState._abortController) {
-        AppState._abortController.abort();
-        AppState.set('isStreaming', false);
-      }
-      // 切换模式 = 开启新会话
-      const container = document.getElementById('chat-container');
-      if (container) container.innerHTML = '';
-      AppState.history = [];
-      AppState.set('mode', mode);
-      if (AppState.view === 'chat') {
-        // 已在 chat 视图：清空后展示空状态引导
-        _ensureChatEmptyState();
-        document.getElementById('input-textarea')?.focus();
-      }
+      switchMode(mode);
     });
   });
-  */
 
   document.getElementById('nav-playground')?.addEventListener('click', () => AppState.set('view', 'home'));
   document.getElementById('nav-projects')?.addEventListener('click', () => openModal('projects-modal'));
@@ -5966,17 +6032,10 @@ function bindEvents() {
     AppStream.finish(`<span class="stream-stopped"> [${t('ui.stopped')}]</span>`);
   });
 
-  initChip('mode-chip', 'mode-dropdown', (value) => AppState.set('mode', value));
+  initChip('mode-chip', 'mode-dropdown', (value) => switchMode(value));
   initChip('model-chip', 'model-dropdown', (value, label) => {
-    AppState.model = value;
-    const chipLabel = document.getElementById('model-chip-label');
-    if (chipLabel) {
-      const shortName = label.split('\n').map(s => s.trim()).filter(Boolean).join(' ');
-      chipLabel.textContent = shortName;
-    }
-    document.querySelectorAll('#model-dropdown .chip-option').forEach(li => {
-      li.setAttribute('aria-selected', li.dataset.value === value ? 'true' : 'false');
-    });
+    const shortName = label.split('\n').map(s => s.trim()).filter(Boolean).join(' ');
+    setActiveModel(value, shortName);
   });
 
   // 模型信息卡片（Cursor 风格：hover 显示模型介绍）
@@ -6012,6 +6071,7 @@ function bindEvents() {
       const modelEl = document.getElementById('input-llm-model');
       if (baseEl) baseEl.value = p.base_url;
       if (modelEl) modelEl.value = p.model;
+      updateConfigState({ api_key_configured: false }, AppState.config?.config_path || '');
       document.getElementById('input-llm-api-key')?.focus();
     });
   });
@@ -6028,33 +6088,14 @@ function bindEvents() {
       if (btn) { btn.disabled = true; btn.textContent = t('panel.saving'); }
       await apiPost('/config/llm', payload);
 
-      // 保存成功后，存储自定义模型到 localStorage
       if (payload.model) {
-        localStorage.setItem('vp_custom_model', payload.model);
-        AppState.model = payload.model;
-        const chipLabel = document.getElementById('model-chip-label');
-        if (chipLabel) {
-          // 尝试从已知标签中获取，否则直接显示模型名
-          const _MODEL_LABELS = {
-            'gemini-2.5-flash': 'Gemini 2.5 Flash',
-            'gemini-2.5-pro': 'Gemini 2.5 Pro',
-            'gpt-5.3-codex': 'GPT-5.3 Codex',
-            'gpt-5': 'GPT-5',
-            'gpt-4o': 'GPT-4o',
-            'claude-sonnet-4-6': 'Claude Sonnet 4.6',
-            'claude-opus-4-7': 'Claude Opus 4.7',
-            'o3': 'o3',
-            'o4-mini': 'o4-mini',
-            'kimi-k2.6': 'Kimi K2.6',
-            'deepseek-v4-pro': 'DeepSeek V4 Pro',
-            'deepseek-v4-flash': 'DeepSeek V4 Flash',
-            'deepseek-chat': 'DeepSeek Chat',
-          };
-          chipLabel.textContent = _MODEL_LABELS[payload.model] || payload.model;
-        }
+        setActiveModel(payload.model);
       }
 
       if (btn) { btn.textContent = t('panel.saved'); }
+      await loadAppConfig();
+      const keyEl = document.getElementById('input-llm-api-key');
+      if (keyEl) keyEl.value = '';
       setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = t('panel.saveLlm'); } }, 2000);
       checkHealth();
     } catch (err) {
@@ -6072,6 +6113,9 @@ function bindEvents() {
       if (btn) { btn.disabled = true; btn.textContent = t('panel.saving'); }
       await apiPost('/config/nanonets', { api_key });
       if (btn) { btn.textContent = t('panel.saved'); }
+      await loadAppConfig();
+      const keyEl = document.getElementById('input-nanonets-key');
+      if (keyEl) keyEl.value = '';
       setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = t('panel.saveNanonets'); } }, 2000);
     } catch (err) {
       if (btn) { btn.disabled = false; btn.textContent = t('panel.saveFailed'); }
@@ -6242,7 +6286,7 @@ function bindEvents() {
     if ((e.ctrlKey || e.metaKey) && /^[1-4]$/.test(e.key)) {
       e.preventDefault();
       const modes = ['learning', 'solving', 'reviewing', 'searching'];
-      AppState.set('mode', modes[parseInt(e.key) - 1]);
+      switchMode(modes[parseInt(e.key) - 1]);
     }
   });
 
@@ -6272,6 +6316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     refreshHistorySidebar();
     _syncModeTabs();
+    localStorage.removeItem('vp_custom_model');
+    loadAppConfig();
     setTimeout(checkHealth, 1200);
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {

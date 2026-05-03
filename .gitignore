@@ -110,6 +110,7 @@ test_*.html
 _tmp_*.txt
 _tips_*.txt
 wait_tips_*.txt
+run.sh
 
 # ──────── app目录临时文件 ────────
 app/_api_test_*.py

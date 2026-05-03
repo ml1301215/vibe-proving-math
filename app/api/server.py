@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from core.config import llm_cfg, load_config
+from core.config import clear_config_cache, config_path, llm_cfg, load_config, update_config_file
 from core.logging_setup import setup_logging
 from core.theorem_search import search_theorems as _ts_search, get_cache_stats as _ts_cache_stats
 from core.knowledge_base import extract_text_file
@@ -45,6 +45,28 @@ setup_logging()
 
 import logging
 logger = logging.getLogger("api.server")
+
+
+async def _ingest_memory_best_effort(user_id: str, project_id: str, turns: list[dict]) -> None:
+    """Run LATRACE ingest outside the response path and always close its client."""
+    try:
+        from core.config import latrace_enabled
+        if not latrace_enabled():
+            return
+        from core.memory import MemoryClient
+        mem_client = MemoryClient(user_id=user_id or "anonymous")
+    except Exception as exc:
+        logger.debug("memory ingest disabled/skipped: %s", exc)
+        return
+    try:
+        await asyncio.wait_for(mem_client.ingest(project_id or "default", turns), timeout=2.0)
+    except Exception as exc:
+        logger.debug("memory ingest skipped: %s", exc)
+    finally:
+        try:
+            await mem_client.aclose()
+        except Exception:
+            pass
 
 app = FastAPI(
     title="vibe_proving API",
@@ -395,21 +417,29 @@ async def learn(req: LearnRequest):
     if req.stream:
         async def _gen():
             # 记忆：检索历史（若 LATRACE 可用，静默降级）
+            mem_client = None
+            kb_text = None
             try:
-                from core.memory import MemoryClient
-                mem_client = MemoryClient(user_id=req.user_id or "anonymous")
-                memories = await asyncio.wait_for(
-                    mem_client.retrieve(req.project_id or "default", req.statement),
-                    timeout=5,
-                )
-                kb_text = None
-                if memories:
-                    kb_text = mem_client.format_memories_for_prompt(memories)
-                    yield f"<!-- memory_retrieved: {len(memories)} items -->"
-            except Exception:
+                from core.config import latrace_enabled
+                if latrace_enabled():
+                    from core.memory import MemoryClient
+                    mem_client = MemoryClient(user_id=req.user_id or "anonymous")
+                    memories = await asyncio.wait_for(
+                        mem_client.retrieve(req.project_id or "default", req.statement),
+                        timeout=2.0,
+                    )
+                    if memories:
+                        kb_text = mem_client.format_memories_for_prompt(memories)
+                        yield f"<!-- memory_retrieved: {len(memories)} items -->"
+            except Exception as exc:
                 logger.debug("learn: memory retrieve skipped (LATRACE unavailable)")
-                mem_client = None
-                kb_text = None
+            finally:
+                if mem_client is not None:
+                    try:
+                        await mem_client.aclose()
+                    except Exception:
+                        pass
+
             async for chunk in stream_learning_pipeline(
                 req.statement,
                 level=req.level,
@@ -420,16 +450,14 @@ async def learn(req: LearnRequest):
                 yield chunk
 
             # 记忆：异步写入（静默降级）
-            if mem_client is not None:
-                try:
-                    asyncio.create_task(
-                        mem_client.ingest(req.project_id or "default", [
-                            {"role": "user", "text": f"学习模式: {req.statement}"},
-                            {"role": "assistant", "text": f"[学习模式输出已完成]"},
-                        ])
-                    )
-                except Exception:
-                    logger.debug("learn: memory ingest skipped")
+            asyncio.create_task(_ingest_memory_best_effort(
+                req.user_id or "anonymous",
+                req.project_id or "default",
+                [
+                    {"role": "user", "text": f"学习模式: {req.statement}"},
+                    {"role": "assistant", "text": f"[学习模式输出已完成]"},
+                ],
+            ))
 
         return StreamingResponse(
             _sse_generator(_gen()),
@@ -1021,35 +1049,56 @@ def _effective_nanonets_cfg() -> dict:
     return base
 
 
+@app.get("/config")
+async def get_config():
+    """返回 UI 可展示的脱敏配置。API key 只返回是否已配置。"""
+    llm = _effective_llm_cfg()
+    nanonets = _effective_nanonets_cfg()
+    return {
+        "config_path": str(config_path()),
+        "llm": {
+            "base_url": llm.get("base_url", ""),
+            "model": llm.get("model", ""),
+            "api_key_configured": bool(str(llm.get("api_key", "")).strip()),
+        },
+        "nanonets": {
+            "api_key_configured": bool(str(nanonets.get("api_key", "")).strip()),
+        },
+    }
+
+
 @app.post("/config/llm")
 async def update_llm_config(body: dict):
-    """热更新 LLM 配置（base_url / api_key / model），无需重启服务。"""
+    """保存 LLM 配置到 config.toml，并刷新运行时客户端。"""
     patch: dict = {}
     for key in ("base_url", "api_key", "model"):
         if key in body and isinstance(body[key], str) and body[key].strip():
             patch[key] = body[key].strip()
     if not patch:
         raise HTTPException(status_code=422, detail="至少提供 base_url / api_key / model 之一")
-    _runtime_config_overrides.setdefault("llm", {}).update(patch)
-    # 让 core.llm 下次重新构建客户端（reset_client 清除单例 _llm_client）
+    path = update_config_file({"llm": patch})
+    clear_config_cache()
+    _runtime_config_overrides.pop("llm", None)
     try:
         import core.llm as _llm_mod
-        _llm_mod.update_config_override(patch)
+        _llm_mod.update_config_override({})
     except Exception as _e:
-        logger.warning("core.llm.update_config_override failed: %s — runtime override already set in server dict", _e)
-    logger.info("LLM config updated: %s", {k: ("***" if k == "api_key" else v) for k, v in patch.items()})
-    return {"ok": True, "updated": list(patch.keys())}
+        logger.warning("core.llm.update_config_override failed after config save: %s", _e)
+    logger.info("LLM config saved: %s", {k: ("***" if k == "api_key" else v) for k, v in patch.items()})
+    return {"ok": True, "updated": list(patch.keys()), "config_path": str(path)}
 
 
 @app.post("/config/nanonets")
 async def update_nanonets_config(body: dict):
-    """热更新 Nanonets API Key，无需重启服务。"""
+    """保存 Nanonets API Key 到 config.toml。"""
     api_key = (body.get("api_key") or "").strip()
     if not api_key:
         raise HTTPException(status_code=422, detail="api_key 不能为空")
-    _runtime_config_overrides.setdefault("nanonets", {})["api_key"] = api_key
-    logger.info("Nanonets API key updated")
-    return {"ok": True}
+    path = update_config_file({"nanonets": {"api_key": api_key}})
+    clear_config_cache()
+    _runtime_config_overrides.pop("nanonets", None)
+    logger.info("Nanonets API key saved")
+    return {"ok": True, "config_path": str(path)}
 
 
 # ── 错误处理 ──────────────────────────────────────────────────────────────────
