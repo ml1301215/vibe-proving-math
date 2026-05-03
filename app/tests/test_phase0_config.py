@@ -10,7 +10,7 @@ def test_directory_structure():
     """0.1 验证必须存在的目录和文件"""
     required = [
         "core", "skills", "modes", "api", "tests",
-        "config.example.toml", "docker-compose.yml", "requirements.txt",
+        "config.example.toml", "requirements.txt",
     ]
     for name in required:
         assert (APP_ROOT / name).exists(), f"缺少: {name}"

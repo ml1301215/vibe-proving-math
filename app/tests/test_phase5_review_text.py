@@ -103,7 +103,7 @@ async def test_review_text_llm_fallback(monkeypatch):
         "Proof. Let a = 2m and b = 2n. Then a+b = 2(m+n). QED.\n"
     )
 
-    async def fake_llm(text, source):
+    async def fake_llm(text, source, lang="zh"):
         return [P.TheoremProofPair(
             env_type="theorem",
             ref=None,
@@ -134,7 +134,7 @@ async def test_review_text_single_proof_fallback(monkeypatch):
     from modes.research import reviewer as R
     from modes.research import parser as P
 
-    async def empty_llm(text, source):
+    async def empty_llm(text, source, lang="zh"):
         return []
     monkeypatch.setattr(R, "_llm_extract_from_text", empty_llm)
     monkeypatch.setattr(P, "_llm_extract_from_text", empty_llm)
@@ -174,7 +174,7 @@ async def test_review_text_truncates_long_input(monkeypatch):
     from modes.research import reviewer as R
     from modes.research import parser as P
 
-    async def empty_llm(text, source):
+    async def empty_llm(text, source, lang="zh"):
         return []
     monkeypatch.setattr(R, "_llm_extract_from_text", empty_llm)
     monkeypatch.setattr(P, "_llm_extract_from_text", empty_llm)
@@ -197,7 +197,7 @@ async def test_review_text_report_dict_structure(monkeypatch):
     from modes.research import reviewer as R
     from modes.research import parser as P
 
-    async def empty_llm(text, source):
+    async def empty_llm(text, source, lang="zh"):
         return []
     monkeypatch.setattr(R, "_llm_extract_from_text", empty_llm)
     monkeypatch.setattr(P, "_llm_extract_from_text", empty_llm)
@@ -282,7 +282,7 @@ async def test_progress_callback_single_proof_fallback(monkeypatch):
     from modes.research import reviewer as R
     from modes.research import parser as P
 
-    async def empty_llm(text, source):
+    async def empty_llm(text, source, lang="zh"):
         return []
 
     monkeypatch.setattr(R, "_llm_extract_from_text", empty_llm)

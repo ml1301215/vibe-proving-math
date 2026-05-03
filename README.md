@@ -232,36 +232,6 @@ All API keys can be configured through the web interface — no need to edit con
 
 ---
 
-## 📡 API Reference
-
-Complete documentation at `/docs`. Core endpoints:
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/learn` | POST | Generate structured explanations |
-| `/learn/section` | POST | Regenerate specific section |
-| `/solve` | POST | Proof generation with verification |
-| `/solve_latex` | POST | Generate LaTeX from proof blueprint |
-| `/review` | POST | Text/image proof review |
-| `/review_stream` | POST | Streaming proof review |
-| `/review_pdf_stream` | POST | PDF upload and analysis |
-| `/formalize` | POST | Natural language → Lean 4 |
-| `/search` | GET | Theorem semantic search |
-| `/config/llm` | POST | Runtime LLM configuration |
-| `/config/nanonets` | POST | Runtime OCR configuration |
-
-**Example** (Solving mode):
-
-```bash
-curl -X POST http://127.0.0.1:8080/solve \
-  -H "Content-Type: application/json" \
-  -d '{
-    "statement": "Prove: For all primes p > 2, p is odd"
-  }'
-```
-
----
-
 ## 🤝 Contributing
 
 We welcome contributions from the mathematical community:
