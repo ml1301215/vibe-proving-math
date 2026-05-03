@@ -56,7 +56,7 @@ _config_override: dict = {}
 def update_config_override(patch: dict) -> None:
     """热更新 LLM 配置（由 server /config/llm 调用），下次 get_client() 会使用新配置。"""
     global _config_override, _llm_client
-    _config_override.update({k: v for k, v in patch.items() if v})
+    _config_override = {k: v for k, v in patch.items() if v}
     _llm_client = None  # 强制下次重建客户端
 
 

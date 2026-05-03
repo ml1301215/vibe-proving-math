@@ -76,7 +76,7 @@
   <!-- morphdom：纯 UMD，无 module shim 即可挂到 window.morphdom -->
   <script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=f105">
+  <link rel="stylesheet" href="style.css?v=f106">
 </head>
 <body>
 
@@ -441,7 +441,11 @@
 
   <!-- LLM API 配置 -->
   <div class="panel-section">
-    <div class="panel-section-title" data-i18n="panel.llmConfig">LLM API 配置</div>
+    <div class="panel-section-heading">
+      <div class="panel-section-title" data-i18n="panel.llmConfig">LLM API 配置</div>
+      <span class="config-state-badge unknown" id="llm-config-state" data-i18n="panel.configUnknown">未读取配置</span>
+    </div>
+    <div class="config-source" id="llm-config-source"></div>
     <div class="param-row">
       <label class="param-label" data-i18n="panel.baseUrl">Base URL</label>
       <input type="text" class="param-input" id="input-llm-base-url"
@@ -702,6 +706,6 @@
   </div>
 </div>
 
-<script src="app.js?v=f116"></script>
+<script src="app.js?v=f120"></script>
 </body>
 </html>

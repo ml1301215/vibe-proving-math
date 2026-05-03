@@ -2955,6 +2955,40 @@ body.is-streaming .send-btn {
   margin-bottom: 12px;
 }
 
+.panel-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.panel-section-heading .panel-section-title {
+  margin-bottom: 0;
+}
+
+.config-state-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xl);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.config-state-badge.ok { background: var(--green-bg); color: var(--green); }
+.config-state-badge.unavailable { background: var(--red-bg); color: var(--red); }
+.config-state-badge.unknown { background: var(--bg-hover); color: var(--text-muted); }
+
+.config-source {
+  min-height: 16px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .radio-group { display: flex; flex-direction: column; gap: 8px; }
 
 .radio-label {
@@ -4938,4 +4972,3 @@ body.is-streaming .mode-tabs { pointer-events: none; opacity: 0.7; }
   font-size: 13px;
   padding: 9px 16px;
 }
-
