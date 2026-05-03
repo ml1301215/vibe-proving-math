@@ -5992,6 +5992,31 @@ function bindEvents() {
     try {
       if (btn) { btn.disabled = true; btn.textContent = t('panel.saving'); }
       await apiPost('/config/llm', payload);
+
+      // 保存成功后，更新当前使用的模型
+      if (payload.model) {
+        AppState.model = payload.model;
+        const chipLabel = document.getElementById('model-chip-label');
+        if (chipLabel) {
+          // 尝试从已知标签中获取，否则直接显示模型名
+          const _MODEL_LABELS = {
+            'gemini-2.5-flash': 'Gemini 2.5 Flash',
+            'gemini-2.5-pro': 'Gemini 2.5 Pro',
+            'gpt-5.3-codex': 'GPT-5.3 Codex',
+            'gpt-5': 'GPT-5',
+            'gpt-4o': 'GPT-4o',
+            'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+            'claude-opus-4-7': 'Claude Opus 4.7',
+            'o3': 'o3',
+            'o4-mini': 'o4-mini',
+            'kimi-k2.6': 'Kimi K2.6',
+            'deepseek-v4-pro': 'DeepSeek V4 Pro',
+            'deepseek-v4-flash': 'DeepSeek V4 Flash',
+          };
+          chipLabel.textContent = _MODEL_LABELS[payload.model] || payload.model;
+        }
+      }
+
       if (btn) { btn.textContent = t('panel.saved'); }
       setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = t('panel.saveLlm'); } }, 2000);
       checkHealth();
