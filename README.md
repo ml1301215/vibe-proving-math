@@ -242,7 +242,52 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ## Architecture
 
-Stack overview (Mermaid). More diagrams: [`项目架构图_Mermaid.md`](项目架构图_Mermaid.md).
+Bilingual stack overview (Mermaid; renders on GitHub). Chinese headings mirror: [README.zh.md — 架构](README.zh.md#架构).
+
+### Stack overview (English)
+
+```mermaid
+mindmap
+    root((vibe_proving))
+        Frontend
+            HTML5
+            CSS3
+                Responsive layout
+                Theme toggle
+                Motion / transitions
+            JavaScript ES6+
+                AppState
+                SSE client
+                Event handling
+            CDN deps
+                KaTeX
+                marked.js Markdown
+        Backend
+            Python 3.11+
+            FastAPI
+                Async I/O
+                SSE
+                OpenAPI docs
+            Uvicorn
+                ASGI server
+            Core libs
+                TOML config
+                HTTP client
+        External services
+            LLM API
+                DeepSeek v4 Pro
+                Gemini 3.1 Pro
+                Custom endpoints
+            Theorem Search
+            Nanonets OCR
+            Aristotle Lean 4
+        DevOps
+            Deployment
+                Docker optional
+                Nginx reverse proxy
+```
+
+### 技术栈（中文）
 
 ```mermaid
 mindmap
