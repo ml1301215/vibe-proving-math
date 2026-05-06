@@ -36,7 +36,7 @@ from skills.search_theorems import search_theorems, TheoremMatch, format_theorem
 from skills.counterexamples import find_counterexample, CounterexampleResult
 
 _CONFIDENCE_THRESHOLD = 0.6  # 低于此值视为 "No confident solution"
-_MAX_REVISIONS = 3            # 验证-修订循环最多轮次
+_MAX_REVISIONS = 1            # 优化: 从3轮降到1轮,加快响应速度（简单问题不需要多轮修订）
 
 # 疑问式命题关键词（中英文），命中时优先走反例路径
 _INTERROGATIVE_PATTERNS = (

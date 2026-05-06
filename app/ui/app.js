@@ -3165,11 +3165,13 @@ window.regenerateMessage = function(btn) {
     showToast('warning', AppState.lang === 'zh' ? '无法重新生成：缺少上下文' : 'Cannot regenerate: missing context');
     return;
   }
-  const { mode, statement, proofText } = _lastAttempt;
+
   if (AppState.isStreaming) {
     showToast('warning', AppState.lang === 'zh' ? '请等待当前生成完成' : 'Please wait for current generation to complete');
     return;
   }
+
+  const { mode, statement, proofText, level, lang, model, attachments } = _lastAttempt;
 
   // 移除当前 AI 回复（重新生成时）
   const bubbleEl = btn.closest('.msg-bubble');
@@ -3181,15 +3183,42 @@ window.regenerateMessage = function(btn) {
     }
   }
 
+  // 恢复模式和模型
   AppState.set('mode', mode);
-  if (mode === 'reviewing' && proofText) {
-    const ta = document.getElementById('input-textarea');
-    if (ta) { ta.value = proofText; autoResize(ta); }
+  if (model) {
+    setActiveModel(model);
   }
-  if (statement) {
-    const ta = document.getElementById('input-textarea');
-    if (ta) { ta.value = statement; autoResize(ta); }
+
+  // 根据不同模式恢复参数
+  if (mode === 'learning' && level !== undefined) {
+    // 恢复learning模式的level参数
+    AppState.settings.level = level;
+    // 同步UI（如果有level选择器的话）
+    const levelSelect = document.getElementById('input-level');
+    if (levelSelect) levelSelect.value = level;
   }
+
+  if (mode === 'reviewing') {
+    // 对于reviewing模式，需要提示用户无法直接恢复附件
+    if (attachments && attachments.length > 0) {
+      showToast('info', AppState.lang === 'zh'
+        ? '提示：PDF附件无法自动恢复，请重新上传'
+        : 'Note: PDF attachments cannot be auto-restored, please re-upload');
+    }
+    const ta = document.getElementById('input-textarea');
+    if (ta && proofText) {
+      ta.value = proofText;
+      autoResize(ta);
+    }
+  } else if (statement) {
+    // 其他模式恢复statement
+    const ta = document.getElementById('input-textarea');
+    if (ta) {
+      ta.value = statement;
+      autoResize(ta);
+    }
+  }
+
   _isRegenerating = true;  // 设置重新生成标志
   sendMessage();
 };
@@ -3514,14 +3543,25 @@ window.retryLearnSection = async function(sectionId) {
    13. 模式处理器
 ───────────────────────────────────────────────────────────── */
 async function handleLearning(statement) {
-  _lastAttempt = { mode: 'learning', statement };
-  // 界面语言优先：中文 UI 下前置知识等内容统一中文，避免仅用题干语种误判为英文
+  const level = AppState.settings.level;
   const lang = AppState.lang === 'zh' ? 'zh' : AppState.lang === 'en' ? 'en' : _detectLang(statement);
+  const model = AppState.model;
+
+  // 保存完整请求参数以支持重新生成
+  _lastAttempt = {
+    mode: 'learning',
+    statement,
+    level,
+    lang,
+    model
+  };
+
+  // 界面语言优先：中文 UI 下前置知识等内容统一中文，避免仅用题干语种误判为英文
   window._lastLearnContext = {
     statement,
-    level: AppState.settings.level,
+    level,
     lang,
-    model: AppState.model,
+    model,
   };
   addMessage('user', statement);
   const contentEl = addMessage('ai', null);
@@ -3752,7 +3792,13 @@ function buildAccordionHtml(sections, opts) {
 }
 
 async function handleSolving(statement) {
-  _lastAttempt = { mode: 'solving', statement };
+  const model = AppState.model;
+  // 保存完整请求参数以支持重新生成
+  _lastAttempt = {
+    mode: 'solving',
+    statement,
+    model
+  };
   addMessage('user', statement);
 
   // solving 模式：不用 AppStream（不展示 CoT），改用专属的步骤进度 UI
@@ -4566,7 +4612,13 @@ async function streamReview(proofText, { onStatus, onResult, onFinal, onError, l
    形式化证明模式
 ───────────────────────────────────────────────────────────── */
 async function handleFormalization(statement) {
-  _lastAttempt = { mode: 'formalization', statement };
+  const model = AppState.model;
+  // 保存完整请求参数以支持重新生成
+  _lastAttempt = {
+    mode: 'formalization',
+    statement,
+    model
+  };
   addMessage('user', statement);
 
   const contentEl = addMessage('ai', null);
@@ -4915,7 +4967,19 @@ async function handleReviewing(focusText) {
     return;
   }
 
-  _lastAttempt = { mode: 'reviewing', proofText };
+  const model = AppState.model;
+  // 保存完整请求参数以支持重新生成（包括附件信息）
+  _lastAttempt = {
+    mode: 'reviewing',
+    proofText,
+    attachments: list.map(a => ({
+      name: a.name,
+      pageCount: a.pageCount,
+      thumbnails: a.thumbnails || [],
+      // 注意：rawFile不能序列化，重新生成时需要用户重新上传或使用已有的数据
+    })),
+    model
+  };
   let userPreview;
   const pdfList = list.filter(a => a.rawFile && /\.pdf$/i.test(a.name));
   const nonPdfList = list.filter(a => !(/\.pdf$/i.test(a.name)));
@@ -5212,7 +5276,13 @@ async function _handleReviewingPdf(attach, focusText) {
 }
 
 async function handleSearching(query) {
-  _lastAttempt = { mode: 'searching', statement: query };
+  const model = AppState.model;
+  // 保存完整请求参数以支持重新生成
+  _lastAttempt = {
+    mode: 'searching',
+    statement: query,
+    model
+  };
   addMessage('user', query);
   const contentEl = addMessage('ai', null);
   if (contentEl) contentEl.innerHTML = makeThinkingHtml(t('ui.searchingTheorems'));
@@ -5337,6 +5407,9 @@ async function sendMessage() {
       const row = textarea?.closest('.textarea-row');
       row?.classList.add('shake');
       setTimeout(() => row?.classList.remove('shake'), 500);
+      // 添加toast提示
+      const isZh = AppState.lang === 'zh';
+      showToast('warning', isZh ? '请输入内容后再发送' : 'Please enter something before sending');
       return;
     }
 
@@ -6002,12 +6075,13 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll('.mode-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const mode = tab.dataset.mode;
-      switchMode(mode);
-    });
-  });
+  // 顶部 mode tabs 仅作为视觉指示器，不可点击切换（用户需通过主界面切换模式）
+  // document.querySelectorAll('.mode-tab').forEach(tab => {
+  //   tab.addEventListener('click', () => {
+  //     const mode = tab.dataset.mode;
+  //     switchMode(mode);
+  //   });
+  // });
 
   document.getElementById('nav-playground')?.addEventListener('click', () => AppState.set('view', 'home'));
   document.getElementById('nav-projects')?.addEventListener('click', () => openModal('projects-modal'));

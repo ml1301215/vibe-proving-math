@@ -17,6 +17,7 @@ from typing import Any, Awaitable, Callable, Optional
 from core.config import nanonets_cfg
 from core.llm import chat_json, lang_sys_suffix
 from core.nanonets_client import NanonetsExtractResult, extract_pdf_markdown_nanonets
+from core.text_sanitize import sanitize_dict, strip_non_math_latex
 
 logger = logging.getLogger(__name__)
 
@@ -421,7 +422,9 @@ async def review_section_with_llm(
     raw.setdefault("citation_issues", [])
     raw.setdefault("confidence", 0.5)
     raw.setdefault("source_quotes", [])
-    return enforce_verdict_rules(raw)
+    # 清理 LaTeX 控制序列
+    sanitized = sanitize_dict(raw)
+    return enforce_verdict_rules(sanitized)
 
 
 async def run_pdf_nanonets_section_review(

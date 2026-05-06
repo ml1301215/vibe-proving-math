@@ -3942,11 +3942,12 @@ body.is-streaming [data-tooltip]:hover::after { opacity: 0 !important; content: 
   font-weight: 500;
   padding: 6px 14px;
   border-radius: 999px;
-  cursor: pointer;
+  cursor: default; /* 改为default，不显示pointer */
+  pointer-events: none; /* 禁用所有鼠标交互 */
   transition: color var(--transition);
   z-index: 1;
 }
-.mode-tab:hover { color: var(--text-primary); }
+.mode-tab:hover { color: var(--text-secondary); /* 移除hover效果 */ }
 .mode-tab.active { color: var(--text-primary); font-weight: 600; }
 .mode-tab-icon { font-size: 13px; opacity: 0.85; }
 .mode-tab-indicator {

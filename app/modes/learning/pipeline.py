@@ -349,9 +349,23 @@ async def stream_card_proof(
     try:
         elab_user_msg = _kb_prefix + f"Write a complete proof and explanation for:\n\n{statement}"
         elab_sys = _ELABORATION_SYSTEM + _ls
+
+        # 添加日志：调试proof生成
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[PROOF] Starting generation for: {statement[:50]}...")
+        logger.info(f"[PROOF] Model: {model}, max_tokens: 3000")
+
+        chunk_count = 0
+        total_chars = 0
         async for chunk in _stream_stripped(elab_user_msg, elab_sys, model, 3000, heading_for_strip):
+            chunk_count += 1
+            total_chars += len(chunk)
             yield chunk
+
+        logger.info(f"[PROOF] Completed: {chunk_count} chunks, {total_chars} chars total")
     except Exception as e:
+        logger.exception(f"[PROOF] Exception: {e}")
         yield _section_error_frame("proof", f"{type(e).__name__}: {e}")
         error_msg = f"_Proof generation failed: {type(e).__name__}: {e}_\n" if lang == "en" else f"_阐释生成失败：{type(e).__name__}: {e}_\n"
         yield error_msg

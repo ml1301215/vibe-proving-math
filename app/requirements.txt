@@ -33,6 +33,10 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 anyio>=4.0.0
 
+# 端到端测试（可选，仅开发环境需要）
+playwright>=1.40.0  # 浏览器自动化测试
+pytest-playwright>=0.4.0  # Playwright pytest插件
+
 # ── 已移除（原来声明但实际未使用）──────────────────────────────────────────────
 # plasTeX>=2.5         # LaTeX 解析库（实际用纯正则，未 import）
 # arxiv>=2.1.0         # arXiv Python 库（实际直接用 httpx）

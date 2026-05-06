@@ -37,10 +37,10 @@ logger = logging.getLogger(__name__)
 _MAX_PROOF_CHARS = 6000
 
 # TheoremSearch 查询：每个引用最多等待多少秒
-_SEARCH_TIMEOUT = 8.0
+_SEARCH_TIMEOUT = 3.0  # 优化: 从8秒降到3秒,减少验证等待时间
 
 # 最多查多少条引用（控制延迟）
-_MAX_REFS_TO_SEARCH = 6
+_MAX_REFS_TO_SEARCH = 4  # 优化: 从6个降到4个,加快验证速度
 
 _LATEX_STYLE_INSTRUCTION = (
     "When you mention any mathematical object, variable, formula, set, map, inequality, congruence, "

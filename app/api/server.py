@@ -896,12 +896,21 @@ async def search(
     from skills.search_theorems import search_theorems
 
     try:
-        results = await search_theorems(q, top_k=top_k, min_sim=min_similarity)
+        # 添加5秒超时，避免长时间等待外部服务
+        results = await asyncio.wait_for(
+            search_theorems(q, top_k=top_k, min_sim=min_similarity),
+            timeout=5.0
+        )
         return {
             "query": q,
             "count": len(results),
             "results": [r.to_dict() for r in results],
         }
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="TheoremSearch 查询超时，请稍后重试或检查网络连接"
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TheoremSearch 查询失败: {e}")
 
