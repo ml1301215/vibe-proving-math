@@ -56,7 +56,9 @@ const I18N = {
       proofPlaceholder: '点击 📎 上传 PDF 论文，或粘贴证明文本…',
       proofFocusPlaceholder: '可补充审查重点（可选）…',
       stop: '■ 停止', stopAria: '停止生成',
-      sendTip: '发送 (↵)', sendAria: '发送', aria: '输入数学命题',
+      sendTip: '发送 (↵)', sendAria: '发送',
+      pauseTip: '停止当前请求', pauseAria: '停止当前请求',
+      aria: '输入数学命题',
       solvingPlaceholder: '输入待证命题…',
       learningPlaceholder: '输入数学命题或定理名…',
       searchingPlaceholder: '用自然语言描述定理，例如：无穷多个素数…',
@@ -249,7 +251,9 @@ const I18N = {
       proofPlaceholder: 'Click 📎 to upload PDF, or paste proof text…',
       proofFocusPlaceholder: 'Optional: add a review focus…',
       stop: '■ Stop', stopAria: 'Stop generation',
-      sendTip: 'Send (↵)', sendAria: 'Send', aria: 'Math statement input',
+      sendTip: 'Send (↵)', sendAria: 'Send',
+      pauseTip: 'Stop current request', pauseAria: 'Stop current request',
+      aria: 'Math statement input',
       solvingPlaceholder: 'Enter a statement to prove…',
       learningPlaceholder: 'Enter a theorem or math concept…',
       searchingPlaceholder: 'Describe a theorem in natural language…',
@@ -533,6 +537,7 @@ function applyLang(lang) {
 
   _syncModeChipLabel();
   _syncModeTabs();
+  UI.updateStreaming(AppState.isStreaming);
   renderExamplePrompts();
   refreshHistorySidebar();
   _renderDocsModal(lang);
@@ -1929,19 +1934,7 @@ const UI = {
   updateStreaming(isStreaming) {
     const sendBtn = document.getElementById('send-btn');
     const stopBtn = document.getElementById('stop-btn');
-    if (sendBtn) {
-      sendBtn.disabled = isStreaming;
-      // plan F.3 (T55)：流式期间替换 tooltip，移除 (↵) 快捷键提示
-      if (isStreaming) {
-        sendBtn.dataset.tooltipPrev = sendBtn.dataset.tooltip || '发送 (↵)';
-        sendBtn.dataset.tooltip = AppState.lang === 'zh' ? '生成中…' : 'Generating…';
-        sendBtn.setAttribute('aria-label', sendBtn.dataset.tooltip);
-      } else if (sendBtn.dataset.tooltipPrev) {
-        sendBtn.dataset.tooltip = sendBtn.dataset.tooltipPrev;
-        sendBtn.setAttribute('aria-label', AppState.lang === 'zh' ? '发送' : 'Send');
-        delete sendBtn.dataset.tooltipPrev;
-      }
-    }
+    if (sendBtn) _setSendButtonMode(!!isStreaming);
     if (stopBtn) stopBtn.style.display = isStreaming ? '' : 'none';
     document.body.classList.toggle('is-streaming', !!isStreaming);
   },
@@ -2039,13 +2032,31 @@ function setActiveModel(model, label) {
   });
 }
 
-function _cancelActiveRunForModeSwitch() {
+function _setSendButtonMode(isStreaming) {
+  const sendBtn = document.getElementById('send-btn');
+  if (!sendBtn) return;
+  const sendIcon = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M5 12l14-7-7 14-2-5-5-2z"/></svg>';
+  const pauseIcon = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = isStreaming ? pauseIcon : sendIcon;
+  sendBtn.dataset.tooltip = isStreaming ? t('input.pauseTip') : t('input.sendTip');
+  sendBtn.setAttribute('aria-label', isStreaming ? t('input.pauseAria') : t('input.sendAria'));
+}
+
+function stopActiveRun({ markStream = true } = {}) {
   if (!AppState.isStreaming) return;
   try { AppState._abortController?.abort(); } catch {}
   stopWaitTips();
   _stopReviewWaitTips(null);
+  if (markStream && AppStream.msgEl) {
+    AppStream.finish(`<span class="stream-stopped"> [${t('ui.stopped')}]</span>`);
+  }
   AppState.set('isStreaming', false);
   _sendLock = false;
+}
+
+function _cancelActiveRunForModeSwitch() {
+  stopActiveRun({ markStream: true });
 }
 
 function switchMode(mode, opts = {}) {
@@ -6290,19 +6301,23 @@ function bindEvents() {
   }
 
   // 发送按钮 + 键盘
-  document.getElementById('send-btn')?.addEventListener('click', sendMessage);
+  document.getElementById('send-btn')?.addEventListener('click', () => {
+    if (AppState.isStreaming) {
+      stopActiveRun({ markStream: true });
+    } else {
+      sendMessage();
+    }
+  });
   document.getElementById('input-textarea')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape' && AppState.isStreaming) {
-      AppState._abortController?.abort();
-      AppStream.finish(`<span class="stream-stopped"> [${t('ui.stopped')}]</span>`);
+      stopActiveRun({ markStream: true });
     }
   });
   document.getElementById('input-textarea')?.addEventListener('input', e => autoResize(e.target));
 
   document.getElementById('stop-btn')?.addEventListener('click', () => {
-    AppState._abortController?.abort();
-    AppStream.finish(`<span class="stream-stopped"> [${t('ui.stopped')}]</span>`);
+    stopActiveRun({ markStream: true });
   });
 
   initChip('mode-chip', 'mode-dropdown', (value) => switchMode(value));

@@ -2826,19 +2826,18 @@ html[data-theme="dark"] .section-status-done { color: #4ade80; }
 .send-btn:active { transform: scale(0.95); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-/* plan F.3 (T55)：流式期间发送按钮明确变灰禁用 + 脉冲提示，禁用态比 hover 更显眼 */
+/* 流式期间发送按钮变为停止当前请求的 pause 控件 */
 body.is-streaming .send-btn {
-  opacity: 0.45;
-  background: var(--text-muted, #9ca3af) !important;
-  color: rgba(255,255,255,0.85);
-  cursor: not-allowed;
-  pointer-events: none;
-  filter: grayscale(0.6);
+  opacity: 1;
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
   animation: send-btn-pulse 1.4s ease-in-out infinite;
 }
+body.is-streaming .send-btn:hover { background: var(--red); transform: scale(1.05); }
 @keyframes send-btn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(156, 163, 175, 0.55); }
-  50%      { box-shadow: 0 0 0 6px rgba(156, 163, 175, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 45%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 0%, transparent); }
 }
 
 /* chip 行 */
@@ -4610,7 +4609,7 @@ body.is-streaming [data-tooltip]:hover::after { opacity: 0 !important; content: 
 
 /* ── body 流式期间淡化非聊天区 ──────────────────────────── */
 body.is-streaming .topbar-actions { opacity: 0.6; }
-body.is-streaming .mode-tabs { pointer-events: none; opacity: 0.7; }
+body.is-streaming .mode-tabs { opacity: 0.9; }
 
 /* ── 移动端 mode-tabs 隐藏后 chat-title 占位 ─────────── */
 @media (max-width: 1100px) {
