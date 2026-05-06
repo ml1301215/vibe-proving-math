@@ -2429,13 +2429,28 @@ html[data-theme="dark"] .section-status-done { color: #4ade80; }
 
 /* PDF 审查等待提示轮播 */
 .review-wait-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 13.5px;
-  color: var(--text-muted);
-  margin: 4px 0 10px;
+  color: var(--text-secondary);
+  margin: 8px 0 12px;
+  padding: 9px 12px;
   min-height: 1.5em;
   line-height: 1.6;
-  font-style: italic;
-  opacity: 0.85;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius);
+}
+
+.review-wait-tip::before {
+  content: '💡';
+  flex: 0 0 auto;
+  line-height: 1.6;
+}
+
+.review-wait-tip:empty {
+  display: none;
 }
 
 @keyframes spin {
