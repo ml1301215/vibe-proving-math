@@ -2450,6 +2450,7 @@ html[data-theme="dark"] .section-status-done { color: #4ade80; }
 
 .review-wait-tip .wait-tip-text {
   min-width: 0;
+  font-style: italic;
 }
 
 .review-wait-tip:empty {

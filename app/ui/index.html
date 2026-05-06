@@ -76,7 +76,7 @@
   <!-- morphdom：纯 UMD，无 module shim 即可挂到 window.morphdom -->
   <script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=f109">
+  <link rel="stylesheet" href="style.css?v=f110">
 </head>
 <body>
 
@@ -437,6 +437,13 @@
         <button type="button" class="seg-opt"        data-lang="en" aria-pressed="false">EN</button>
       </div>
     </div>
+    <div class="param-row">
+      <label class="param-label" data-i18n="panel.waitTips">等待提示</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-wait-tips" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
   </div>
 
   <!-- LLM API 配置 -->
@@ -706,6 +713,6 @@
   </div>
 </div>
 
-<script src="app.js?v=f124"></script>
+<script src="app.js?v=f125"></script>
 </body>
 </html>

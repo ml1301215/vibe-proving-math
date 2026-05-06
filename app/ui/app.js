@@ -75,6 +75,7 @@ const I18N = {
       skFocus: '聚焦输入框', skMode: '切换模式',
       llmConfig: 'LLM API 配置', getKey: '获取 Key ↗',
       configUnknown: '未读取配置', configKeyReady: '已配置 API Key', configKeyMissing: '未配置 API Key',
+      waitTips: '等待提示',
       saveLlm: '保存配置',
       nanonetsCfg: 'Nanonets PDF 解析', getNanoneetsKey: '申请 API Key ↗',
       saveNanonets: '保存',
@@ -257,6 +258,7 @@ const I18N = {
       skFocus: 'Focus input', skMode: 'Switch mode',
       llmConfig: 'LLM API Config', getKey: 'Get Key ↗',
       configUnknown: 'Config not loaded', configKeyReady: 'API Key configured', configKeyMissing: 'API Key missing',
+      waitTips: 'Wait tips',
       saveLlm: 'Save Config',
       nanonetsCfg: 'Nanonets PDF Parsing', getNanoneetsKey: 'Apply API Key ↗',
       saveNanonets: 'Save',
@@ -1085,11 +1087,11 @@ function normalizeEscapedNewlines(text) {
   if (!s.includes('\\n')) return s;
 
   // Handle doubled escaping from JSON-ish payloads before single-backslash cases.
-  s = s.replace(/\\\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
+  s = s.replace(/\\\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|[A-Z]\s*(?:[=+\-*/^_]|\\(?:in|cup|sqcup|subset|subseteq|le|leq|ge|geq))|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
   s = s.replace(/\\\\n(?=(?:\s|$|[#>*\-+0-9`$|]|[A-Z][a-z]|Step\b|Then\b|This\b|For\b|If\b|We\b|Now\b))/g, '\n');
 
-  // Fix malformed math fragments like `\nx^T Lx` inside display math.
-  s = s.replace(/\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
+  // Fix malformed math fragments like `\nx^T Lx` or `\nV = ...` inside display math.
+  s = s.replace(/\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|[A-Z]\s*(?:[=+\-*/^_]|\\(?:in|cup|sqcup|subset|subseteq|le|leq|ge|geq))|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
 
   // Convert literal newline escapes that are clearly prose / Markdown separators.
   s = s.replace(/\\n(?=(?:\s|$|[#>*\-+0-9`$|]|[A-Z][a-z]|Step\b|Then\b|This\b|For\b|If\b|We\b|Now\b))/g, '\n');
@@ -1206,6 +1208,7 @@ const AppState = {
   settings: {
     level: 'undergraduate',
     maxTheorems: 5,
+    waitTips: localStorage.getItem('vp_wait_tips') !== '0',
     attachments: [],   // [{name, size, content}]
     kbConstrained: false,  // 仅在知识库范围内回答
     // 审查选项
@@ -2686,18 +2689,21 @@ let _rvWaitTipIdx = 0;
 
 function _startReviewWaitTips(el) {
   if (!el) return;
+  if (!AppState.settings.waitTips) return;
   if (_rvWaitTipTimer) clearInterval(_rvWaitTipTimer);
   const tips = _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.zh;
   _rvWaitTipIdx = Math.floor(Math.random() * tips.length);
 
   // 延迟4秒后显示第一条提示
   setTimeout(() => {
+    if (!AppState.settings.waitTips) return;
     if (!el.isConnected) return;
     el.innerHTML = _renderMathText(tips[_rvWaitTipIdx]);
     renderKatexFallback(el);
 
     // 开始定时轮播
     _rvWaitTipTimer = setInterval(() => {
+      if (!AppState.settings.waitTips) { _stopReviewWaitTips(null); return; }
       const ts = _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.zh;
       _rvWaitTipIdx = (_rvWaitTipIdx + 1) % ts.length;
       if (el.isConnected) {
@@ -2743,6 +2749,7 @@ function _setWaitTipText(bar, text) {
 function startWaitTips(containerEl, opts) {
   opts = opts || {};
   stopWaitTips();
+  if (!AppState.settings.waitTips) return;
   if (_waitTipTimer || _waitTipAppearTimer) return;
   _waitTipIdx = Math.floor(Math.random() * (_waitTipsShuffled.en.length));
   _waitTipInterval = 9000;
@@ -2755,6 +2762,7 @@ function startWaitTips(containerEl, opts) {
   // 延迟显示第一条（学习模式默认 800ms）
   _waitTipAppearTimer = setTimeout(() => {
     _waitTipAppearTimer = null;
+    if (!AppState.settings.waitTips) return;
     const tips = getTips();
 
     const bar = document.createElement('div');
@@ -2771,6 +2779,7 @@ function startWaitTips(containerEl, opts) {
     function scheduleNext() {
       _waitTipTimer = setTimeout(() => {
         _waitTipTimer = null;
+        if (!AppState.settings.waitTips) return;
         const curTips = getTips();
         _waitTipIdx = (_waitTipIdx + 1) % curTips.length;
         const el = _waitTipEl;
@@ -6211,6 +6220,19 @@ function bindEvents() {
   });
 
   document.getElementById('input-max-theorems')?.addEventListener('change', e => { AppState.settings.maxTheorems = parseInt(e.target.value) || 5; });
+  const waitTipsToggle = document.getElementById('toggle-wait-tips');
+  if (waitTipsToggle) {
+    waitTipsToggle.checked = !!AppState.settings.waitTips;
+    waitTipsToggle.addEventListener('change', e => {
+      AppState.settings.waitTips = !!e.target.checked;
+      localStorage.setItem('vp_wait_tips', AppState.settings.waitTips ? '1' : '0');
+      if (!AppState.settings.waitTips) {
+        stopWaitTips();
+        _stopReviewWaitTips(null);
+        document.querySelectorAll('#rv-wait-tip').forEach(el => { el.textContent = ''; });
+      }
+    });
+  }
   // 审查选项
   document.getElementById('toggle-check-logic')?.addEventListener('change', e => { AppState.settings.checkLogic = e.target.checked; });
   document.querySelectorAll('input[name=level]').forEach(r => {
