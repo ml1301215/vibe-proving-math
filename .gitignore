@@ -30,6 +30,7 @@ npm-debug.log*
 .vscode/
 .idea/
 .DS_Store
+.editorconfig
 Thumbs.db
 *.swp
 *.swo
@@ -121,3 +122,7 @@ PR-TASK-*.md
 SOLVING_UI_DESIGN.md
 REVIEW_IMPROVEMENTS.md
 TASKS.md
+FINAL_TEST_SUMMARY.md
+CLAUDE.md
+OPENSOURCE_CHECKLIST.md
+TEST_REPORT.md
