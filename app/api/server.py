@@ -38,11 +38,9 @@ from core.logging_setup import setup_logging
 from core.theorem_search import search_theorems as _ts_search, get_cache_stats as _ts_cache_stats
 from core.knowledge_base import extract_text_file
 from core.user_store import (
-    auth_is_dev,
     create_session,
     create_user,
     delete_session,
-    get_or_create_dev_user,
     get_settings,
     get_user_by_session,
     update_settings,
@@ -129,13 +127,15 @@ app.add_middleware(
 
 
 def _safe_public_user(user: dict) -> dict:
+    quota_unlimited = bool(user.get("is_admin", False))
     return {
         "id": str(user["id"]),
         "username": user["username"],
         "quota_limit": user["quota_limit"],
         "quota_used": user["quota_used"],
         "quota_remaining": user["quota_remaining"],
-        "is_admin": user.get("is_admin", False),
+        "quota_unlimited": quota_unlimited,
+        "is_admin": quota_unlimited,
     }
 
 
@@ -158,6 +158,8 @@ def current_user(request: Request) -> dict:
 
 
 def require_quota(user: dict) -> dict:
+    if user.get("is_admin"):
+        return user
     try:
         updated = consume_quota(int(user["id"]), 1)
         user.update(updated)
@@ -181,10 +183,6 @@ def _reset_user_llm_context(token) -> None:
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
-    if auth_is_dev():
-        if any(path.startswith(prefix) for prefix in _PROTECTED_PATH_PREFIXES):
-            request.state.user = get_or_create_dev_user()
-        return await call_next(request)
     if path == "/" or any(path.startswith(prefix) for prefix in _PUBLIC_PATH_PREFIXES):
         return await call_next(request)
     if any(path.startswith(prefix) for prefix in _PROTECTED_PATH_PREFIXES):
@@ -294,20 +292,19 @@ async def auth_me(request: Request):
     user = _request_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="请先登录")
+    can_configure_api = bool(user.get("is_admin"))
     return {
         "user": _safe_public_user(user),
         "auth": {
-            "allow_register": True if auth_is_dev() else bool((load_config().get("auth", {}) or {}).get("allow_register", True)),
+            "allow_register": bool((load_config().get("auth", {}) or {}).get("allow_register", True)),
+            "can_configure_api": can_configure_api,
         },
     }
 
 
 @app.post("/auth/login")
 async def auth_login(req: AuthRequest, response: Response):
-    if auth_is_dev():
-        user = get_or_create_dev_user()
-    else:
-        user = authenticate_user(req.username, req.password)
+    user = authenticate_user(req.username, req.password)
     if not user:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token, expires = create_session(int(user["id"]))
@@ -326,7 +323,7 @@ async def auth_login(req: AuthRequest, response: Response):
 @app.post("/auth/register")
 async def auth_register(req: AuthRequest, response: Response):
     cfg = load_config().get("auth", {}) or {}
-    if not auth_is_dev() and not bool(cfg.get("allow_register", True)):
+    if not bool(cfg.get("allow_register", True)):
         raise HTTPException(status_code=403, detail="注册已关闭")
     try:
         user = create_user(req.username, req.password)
@@ -1279,6 +1276,8 @@ async def health(request: Request):
     )
 
     ts_cache = _ts_cache_stats()
+    nanonets = _effective_nanonets_cfg(user)
+    nanonets_configured = bool(str(nanonets.get("api_key", "")).strip())
 
     # overall 由 LLM 连通性决定（TheoremSearch 超时不影响系统可用性）
     overall = "ok" if llm_status == "ok" else "degraded"
@@ -1302,6 +1301,10 @@ async def health(request: Request):
                 "cache": ts_cache,
             },
             "kimina": kimina_status,
+            "nanonets": {
+                "status": "ok" if nanonets_configured else "not_configured",
+                "api_key_configured": nanonets_configured,
+            },
             "paper_review_agent": {
                 k: v for k, v in paper_review_agent.items()
                 if k not in {"mathpix", "mistral_ocr", "grobid"}
@@ -1345,8 +1348,12 @@ async def get_config(user: dict = Depends(current_user)):
     llm = _effective_llm_cfg(user)
     nanonets = _effective_nanonets_cfg(user)
     settings = get_settings(int(user["id"]))
+    can_configure_api = bool(user.get("is_admin"))
     return {
         "config_path": str(config_path()),
+        "auth": {
+            "can_configure_api": can_configure_api,
+        },
         "llm": {
             "base_url": llm.get("base_url", ""),
             "model": llm.get("model", ""),
@@ -1365,6 +1372,8 @@ async def get_config(user: dict = Depends(current_user)):
 @app.post("/config/llm")
 async def update_llm_config(body: dict, user: dict = Depends(current_user)):
     """保存当前用户的 LLM 配置。"""
+    if not bool(user.get("is_admin")):
+        raise HTTPException(status_code=403, detail="当前用户模式不允许修改 API 配置")
     patch: dict = {}
     for key in ("base_url", "api_key", "model"):
         if key in body and isinstance(body[key], str) and body[key].strip():
@@ -1379,6 +1388,8 @@ async def update_llm_config(body: dict, user: dict = Depends(current_user)):
 @app.post("/config/nanonets")
 async def update_nanonets_config(body: dict, user: dict = Depends(current_user)):
     """保存当前用户的 Nanonets API Key。"""
+    if not bool(user.get("is_admin")):
+        raise HTTPException(status_code=403, detail="当前用户模式不允许修改 API 配置")
     api_key = (body.get("api_key") or "").strip()
     if not api_key:
         raise HTTPException(status_code=422, detail="api_key 不能为空")

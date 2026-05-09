@@ -39,11 +39,9 @@ timeout     = 10
 log_level = "INFO"
 
 [auth]
-# 开发者部署选项，不在用户 UI 中暴露：
-# dev: 自动登录本地默认用户，便于开发测试。
-# prod: UI 和受保护 API 都要求用户名/密码登录。
-mode = "dev"
-default_user = "dev_user"
+# 超级账户可修改 API 配置；普通注册用户只能使用服务。
+superuser_username = "dev_user"
+superuser_password = "change-me-dev-password"
 session_days = 30
 default_quota = 50
 allow_register = true

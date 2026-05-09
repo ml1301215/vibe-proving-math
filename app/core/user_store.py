@@ -17,8 +17,8 @@ _APP_DIR = Path(__file__).resolve().parent.parent
 
 def _auth_config() -> dict[str, Any]:
     cfg = {
-        "mode": "dev",
-        "default_user": "dev_user",
+        "superuser_username": "dev_user",
+        "superuser_password": "dev_password",
         "session_days": 30,
         "default_quota": 50,
         "allow_register": True,
@@ -28,16 +28,19 @@ def _auth_config() -> dict[str, Any]:
         cfg.update(auth_cfg())
     except Exception:
         pass
-    cfg["mode"] = str(cfg.get("mode") or "dev").strip().lower()
     return cfg
 
 
-def auth_mode() -> str:
-    return _auth_config().get("mode", "dev")
+def superuser_username() -> str:
+    return str(_auth_config().get("superuser_username") or "dev_user").strip() or "dev_user"
 
 
-def auth_is_dev() -> bool:
-    return auth_mode() != "prod"
+def superuser_password() -> str:
+    return str(_auth_config().get("superuser_password") or "").strip()
+
+
+def is_superuser_name(username: str) -> bool:
+    return (username or "").strip() == superuser_username()
 
 
 def _db_path() -> Path:
@@ -143,10 +146,34 @@ def _user_dict(row: sqlite3.Row | None) -> Optional[dict[str, Any]]:
     }
 
 
-def get_or_create_dev_user() -> dict[str, Any]:
+def ensure_superuser() -> dict[str, Any]:
+    username = superuser_username()
+    password = superuser_password()
+    if len(password) < 6:
+        raise ValueError("superuser_password must be at least 6 chars")
     cfg = _auth_config()
-    username = str(cfg.get("default_user") or "dev_user").strip() or "dev_user"
-    return create_user(username, secrets.token_urlsafe(18), allow_existing=True)
+    quota = int(cfg.get("default_quota") or 50)
+    with _connect() as conn:
+        existing = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO users (username, password_hash, created_at, quota_limit, is_admin)
+                VALUES (?, ?, ?, ?, 1)
+                """,
+                (username, _hash_password(password), _now(), quota),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE users
+                SET password_hash = ?, quota_limit = ?, is_admin = 1, disabled = 0
+                WHERE username = ?
+                """,
+                (_hash_password(password), quota, username),
+            )
+        row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        return _user_dict(row)  # type: ignore[return-value]
 
 
 def create_user(username: str, password: str, *, allow_existing: bool = False) -> dict[str, Any]:
@@ -175,8 +202,15 @@ def create_user(username: str, password: str, *, allow_existing: bool = False) -
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict[str, Any]]:
+    username = (username or "").strip()
+    if is_superuser_name(username):
+        configured_password = superuser_password()
+        if len(configured_password) < 6 or not hmac.compare_digest(password or "", configured_password):
+            return None
+        return ensure_superuser()
+
     with _connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE username = ?", ((username or "").strip(),)).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if row is None or row["disabled"]:
             return None
         if not _verify_password(password or "", row["password_hash"]):

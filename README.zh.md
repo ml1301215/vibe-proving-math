@@ -1,6 +1,6 @@
 <div align="center">
 
-![vibe_proving](assets/banner.jpg)
+![vibe proving](assets/banner.jpg)
 
 # 𝒱𝒾𝒷ℯ 𝒫𝓇ℴ𝓋𝒾𝓃ℊ
 
@@ -23,7 +23,7 @@
 
 ## 概述
 
-**vibe_proving** 是面向数学领域学生和研究者的 AI 平台。结合语言模型与定理检索，提供学习、求解、审查、检索等交互式工作流。
+**vibe proving** 是面向数学领域学生和研究者的 AI 平台。结合语言模型与定理检索，提供学习、求解、审查、检索等交互式工作流。
 
 ### 核心能力
 
@@ -193,7 +193,7 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ```mermaid
 mindmap
-    root((vibe_proving))
+    root((vibe proving))
         前端
             HTML5
             CSS3

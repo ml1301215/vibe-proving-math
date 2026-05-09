@@ -1,6 +1,6 @@
 <div align="center">
 
-![vibe_proving](assets/banner.jpg)
+![vibe proving](assets/banner.jpg)
 
 # 𝒱𝒾𝒷ℯ 𝒫𝓇ℴ𝓋𝒾𝓃ℊ
 
@@ -23,7 +23,7 @@ AI-driven mathematical research assistant for students and researchers
 
 ## Overview
 
-**vibe_proving** is an AI platform designed for students and researchers in mathematics. It combines language models with theorem retrieval to provide interactive workflows for learning, problem-solving, proof review, and knowledge discovery.
+**vibe proving** is an AI platform designed for students and researchers in mathematics. It combines language models with theorem retrieval to provide interactive workflows for learning, problem-solving, proof review, and knowledge discovery.
 
 ### Core Capabilities
 
@@ -168,7 +168,9 @@ cd vibe-proving-math
 
 # 2. Create config file
 cp app/config.example.toml app/config.toml
-# Edit app/config.toml and add your LLM API key
+# Edit app/config.toml:
+#   - set [auth].superuser_password
+#   - add your [llm] API endpoint/key/model
 
 # 3. Start with Docker Compose
 docker-compose up -d
@@ -188,12 +190,13 @@ docker-compose logs -f
 
 ```bash
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math/app
+cd vibe-proving-math
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp config.example.toml config.toml
-# Edit config.toml and add your API keys
+cp app/config.example.toml app/config.toml
+# Edit app/config.toml and add your superuser password and API keys
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
@@ -201,12 +204,13 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ```powershell
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math\app
+cd vibe-proving-math
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy config.example.toml config.toml
-# Edit config.toml and add your API keys
+copy app\config.example.toml app\config.toml
+# Edit app\config.toml and add your superuser password and API keys
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
@@ -214,12 +218,13 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ```cmd
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math\app
+cd vibe-proving-math
 python -m venv .venv
 .venv\Scripts\activate.bat
 pip install -r requirements.txt
-copy config.example.toml config.toml
-REM Edit config.toml and add your API keys
+copy app\config.example.toml app\config.toml
+REM Edit app\config.toml and add your superuser password and API keys
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
@@ -227,16 +232,35 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 **Access:** `http://127.0.0.1:8080/ui/` or `http://localhost:8080/ui/`
 
-**First-time setup:**
-1. Click the settings icon (⚙️) in the top-right corner
-2. Configure LLM API:
-   - Base URL (e.g., `https://api.deepseek.com/v1`)
-   - API Key
-   - Model name (e.g., `deepseek-chat`)
-3. (Optional) Configure Nanonets OCR for PDF review
-4. Click "Save"
+Configuration is read from `app/config.toml`. Copy `app/config.example.toml` first, then edit these required fields:
 
-**All settings are persisted** — your configuration will be saved and remain after page refresh.
+```toml
+[auth]
+superuser_username = "dev_user"
+superuser_password = "change-this-password"
+session_days = 30
+default_quota = 50
+allow_register = true
+
+[llm]
+base_url = "https://api.deepseek.com/v1"
+api_key = "your-api-key"
+model = "deepseek-chat"
+```
+
+Authentication uses one unified user system:
+- The configured superuser can modify API settings from the right-side settings panel.
+- Regular registered users can use the application but cannot see or edit API keys/base URLs.
+- Login sessions are stored in an HTTP-only cookie and remain valid for `[auth].session_days`.
+
+Optional services:
+- `[nanonets]` enables Nanonets OCR for PDF review.
+- `[mineru]` uses the MinerU Agent Lightweight Extract API and does not require a token.
+- `[aristotle]` enables Harmonic Aristotle formalization.
+- `docling` is not installed by default because it pulls large local OCR/ML dependencies. Install it manually only if you want local Docling fallback:
+  ```bash
+  python -m pip install "docling>=2.0.0"
+  ```
 
 ---
 
@@ -244,7 +268,7 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ```mermaid
 mindmap
-    root((vibe_proving))
+    root((vibe proving))
         Frontend
             HTML5
             CSS3
@@ -276,6 +300,7 @@ mindmap
                 Custom endpoints
             Theorem Search
             Nanonets OCR
+            MinerU Agent
             Aristotle Lean 4
         DevOps
             Deployment
@@ -290,7 +315,8 @@ mindmap
 - **LLM Integration**: OpenAI-compatible interface (DeepSeek, Gemini, OpenAI)
 - **Theorem Retrieval**: TheoremSearch API for citation verification
 - **Formalization**: Harmonic Aristotle for Lean 4 code generation
-- **PDF Processing**: Nanonets OCR for formula-preserving extraction
+- **PDF Processing**: Nanonets OCR and MinerU Agent for formula-preserving extraction
+- **User System**: SQLite-backed accounts, session cookies, per-user quotas, and a configurable superuser for API administration
 
 ---
 
