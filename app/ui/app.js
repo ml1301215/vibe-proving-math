@@ -3148,7 +3148,7 @@ async function refreshCurrentUser() {
 }
 
 function showAuth(errorText = '') {
-  document.getElementById('auth-view')?.style && (document.getElementById('auth-view').style.display = '');
+  document.getElementById('auth-view')?.style && (document.getElementById('auth-view').style.display = 'flex');
   document.getElementById('app-shell')?.style && (document.getElementById('app-shell').style.display = 'none');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.textContent = errorText || '';
@@ -6718,6 +6718,10 @@ function bindEvents() {
 async function finishAppInitAfterAuth() {
   showAppShell();
   AppState.view = 'home';
+  const homeEl = document.getElementById('home-view');
+  const chatEl = document.getElementById('chat-view');
+  if (homeEl) homeEl.style.display = 'flex';
+  if (chatEl) chatEl.style.display = 'none';
   updateUserUi();
   UI.switchView(AppState.view);
   UI.updateMode(AppState.mode);
