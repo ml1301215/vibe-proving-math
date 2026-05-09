@@ -258,6 +258,14 @@ def _request_user_label(request: Request) -> str:
     return f"{username}({role})"
 
 
+def _user_label(user: dict | None) -> str:
+    if not user:
+        return "anonymous"
+    username = user.get("username") or user.get("id") or "unknown"
+    role = "admin" if user.get("is_admin") else "user"
+    return f"{username}({role})"
+
+
 def _quota_label(request: Request) -> str:
     user = getattr(request.state, "user", None)
     if not user:
@@ -422,9 +430,10 @@ async def auth_me(request: Request):
 
 
 @app.post("/auth/login")
-async def auth_login(req: AuthRequest, response: Response):
+async def auth_login(req: AuthRequest, response: Response, request: Request):
     user = authenticate_user(req.username, req.password)
     if not user:
+        logger.info("Auth login failed: username=%s client=%s", req.username, _client_ip(request))
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token, expires = create_session(int(user["id"]))
     response.set_cookie(
@@ -436,17 +445,20 @@ async def auth_login(req: AuthRequest, response: Response):
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
+    logger.info("Auth login succeeded: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"user": _safe_public_user(user)}
 
 
 @app.post("/auth/register")
-async def auth_register(req: AuthRequest, response: Response):
+async def auth_register(req: AuthRequest, response: Response, request: Request):
     cfg = load_config().get("auth", {}) or {}
     if not bool(cfg.get("allow_register", True)):
+        logger.info("Auth register blocked: username=%s client=%s", req.username, _client_ip(request))
         raise HTTPException(status_code=403, detail="注册已关闭")
     try:
         user = create_user(req.username, req.password)
     except ValueError as exc:
+        logger.info("Auth register failed: username=%s client=%s detail=%s", req.username, _client_ip(request), exc)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     token, expires = create_session(int(user["id"]))
     response.set_cookie(
@@ -458,13 +470,16 @@ async def auth_register(req: AuthRequest, response: Response):
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
+    logger.info("Auth register succeeded: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"user": _safe_public_user(user)}
 
 
 @app.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
+    user = _request_user(request)
     delete_session(request.cookies.get(_AUTH_COOKIE, ""))
     response.delete_cookie(_AUTH_COOKIE, path="/")
+    logger.info("Auth logout: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"ok": True}
 
 
