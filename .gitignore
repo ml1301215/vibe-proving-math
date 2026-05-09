@@ -23,8 +23,7 @@ ENV/
 # ──────── Node / 前端 ────────
 node_modules/
 .npm/
-*.log
-npm-debug.log*
+*.log*
 
 # ──────── 编辑器 / OS ────────
 .vscode/
@@ -54,11 +53,9 @@ app/.eval_cache_api.json
 app/eval_cache/
 eval_raw_outputs*.json
 eval_results.json
-run_eval.py
-mineru_sample_candestroy.md
 real_math_paper_*.pdf
-app/run_formalization_retrieval_benchmark.py
 app/scripts/
+tests/
 
 # ──────── 本地数据 / 缓存 ────────
 *.sqlite
@@ -76,18 +73,11 @@ data/raw/
 !.env.example
 *.key
 *.pem
-secrets.toml
-config.local.toml
 app/config.toml
 
 # ──────── Cursor / Claude 工作区 ────────
 .cursor/
-.claude/cache/
-.claude/runtime/
-.claude/settings.local.json
-
-# ──────── git worktree ────────
-.worktrees/
+.claude/
 
 # ──────── 本地工具链 / 大型依赖 / 第三方参考实现 ────────
 FATE/
@@ -99,27 +89,15 @@ tools/
 
 # ──────── 根目录调试 / 临时文件 ────────
 main.pdf
-test_paper.pdf
-test_paper_review_backend_result.md
-server_changes.patch
-start_server.bat
 test_*.js
 test_*.html
 _tmp_*.txt
 _tips_*.txt
-wait_tips_*.txt
 run.sh
+start_server.bat
 
-# ──────── app目录临时文件 ────────
-app/_api_test_*.py
-app/_api_test_*.json
 
 # ──────── 本地计划 / 工作文档 ────────
 PR-TASK-*.md
-SOLVING_UI_DESIGN.md
-REVIEW_IMPROVEMENTS.md
 TASKS.md
-FINAL_TEST_SUMMARY.md
 CLAUDE.md
-OPENSOURCE_CHECKLIST.md
-TEST_REPORT.md
