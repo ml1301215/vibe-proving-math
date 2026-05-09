@@ -1,6 +1,6 @@
 <div align="center">
 
-![vibe_proving](assets/banner.jpg)
+![vibe proving](assets/banner.jpg)
 
 # 𝒱𝒾𝒷ℯ 𝒫𝓇ℴ𝓋𝒾𝓃ℊ
 
@@ -23,7 +23,7 @@
 
 ## 概述
 
-**vibe_proving** 是面向数学领域学生和研究者的 AI 平台。结合语言模型与定理检索，提供学习、求解、审查、检索等交互式工作流。
+**vibe proving** 是面向数学领域学生和研究者的 AI 平台。结合语言模型与定理检索，提供学习、求解、审查、检索等交互式工作流。
 
 ### 核心能力
 
@@ -143,49 +143,113 @@
 
 **要求：** Python 3.11 或更高版本
 
-### Linux / macOS
+### Docker（推荐）
 
 ```bash
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math/app
+cd vibe-proving-math
+
+# Linux/macOS
+chmod +x docker-start.sh
+./docker-start.sh
+
+# Windows
+docker-start.bat
+```
+
+手动 Docker 启动：
+
+```bash
+git clone https://github.com/ml1301215/vibe-proving-math.git
+cd vibe-proving-math
+
+cp app/config.example.toml app/config.toml
+# 编辑 app/config.toml：
+#   - 设置 [auth].superuser_password
+#   - 填写 [llm] 的 API endpoint/key/model
+
+docker compose up -d
+docker compose ps
+docker compose logs -f
+```
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+### 本地 Python 安装
+
+#### Linux / macOS
+
+```bash
+git clone https://github.com/ml1301215/vibe-proving-math.git
+cd vibe-proving-math
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp config.example.toml config.toml
+cp app/config.example.toml app/config.toml
+# 编辑 app/config.toml，设置超级账户密码和 API 密钥
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-### Windows (PowerShell)
+#### Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math\app
+cd vibe-proving-math
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy config.example.toml config.toml
+copy app\config.example.toml app\config.toml
+# 编辑 app\config.toml，设置超级账户密码和 API 密钥
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-### Windows (命令提示符)
+#### Windows (命令提示符)
 
 ```cmd
 git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math\app
+cd vibe-proving-math
 python -m venv .venv
 .venv\Scripts\activate.bat
 pip install -r requirements.txt
-copy config.example.toml config.toml
+copy app\config.example.toml app\config.toml
+REM 编辑 app\config.toml，设置超级账户密码和 API 密钥
+cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
 **在浏览器中打开 `http://127.0.0.1:8080/ui/`。**
 
-点击右上角的**设置图标（⚙️）**进行配置：
-- LLM API（Base URL、API Key、Model）
-- Nanonets OCR（用于 PDF 审查）
+配置从 `app/config.toml` 读取。首次部署至少需要设置：
 
-所有 API 密钥均可通过 Web 界面配置 — 无需手动编辑 config.toml。
+```toml
+[auth]
+superuser_username = "dev_user"
+superuser_password = "change-this-password"
+session_days = 30
+default_quota = 50
+allow_register = true
+
+[llm]
+base_url = "https://api.deepseek.com/v1"
+api_key = "your-api-key"
+model = "deepseek-chat"
+```
+
+用户系统说明：
+- 超级账户可在右侧设置面板修改 API 配置。
+- 普通注册用户可以使用服务，但看不到也不能修改 API Key/Base URL。
+- 登录状态保存在 HTTP-only cookie 中，有效期由 `[auth].session_days` 控制。
+
+可选服务：
+- `[nanonets]` 用于 PDF 审查 OCR。
+- `[mineru]` 使用 MinerU Agent Lightweight Extract API，无需 token。
+- `[aristotle]` 用于 Harmonic Aristotle 形式化。
 
 ---
 
@@ -193,7 +257,7 @@ python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 
 ```mermaid
 mindmap
-    root((vibe_proving))
+    root((vibe proving))
         前端
             HTML5
             CSS3

@@ -94,24 +94,41 @@ def _copy_candidates(candidates: list[dict]) -> list[dict]:
 
 
 def _extract_leansearch_candidates(payload: dict, *, query: str) -> list[dict]:
-    items = payload.get("results") or payload.get("items") or payload.get("hits") or []
+    if isinstance(payload, list):
+        items = []
+        for entry in payload:
+            if isinstance(entry, list):
+                items.extend(entry)
+            else:
+                items.append(entry)
+    else:
+        items = payload.get("results") or payload.get("items") or payload.get("hits") or []
     out: list[dict] = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        name = str(item.get("name") or item.get("declName") or item.get("declarationName") or "").strip()
+        raw = item.get("result") if isinstance(item.get("result"), dict) else item
+        name_value = raw.get("name") or raw.get("declName") or raw.get("declarationName") or ""
+        if isinstance(name_value, list):
+            name_value = ".".join(str(part) for part in name_value)
+        name = str(name_value).strip()
+        module_value = raw.get("module_name") or raw.get("module") or raw.get("path") or ""
+        if isinstance(module_value, list):
+            module_value = ".".join(str(part) for part in module_value)
         snippet = str(
-            item.get("snippet")
-            or item.get("type")
-            or item.get("doc")
-            or item.get("text")
-            or item.get("content")
+            raw.get("snippet")
+            or raw.get("signature")
+            or raw.get("type")
+            or raw.get("doc")
+            or raw.get("text")
+            or raw.get("content")
+            or raw.get("value")
             or ""
         ).strip()
         if not name and not snippet:
             continue
-        url = str(item.get("url") or item.get("link") or item.get("href") or "").strip()
-        module = str(item.get("module") or item.get("path") or "").strip()
+        url = str(raw.get("url") or raw.get("link") or raw.get("href") or "").strip()
+        module = str(module_value).strip()
         out.append(
             _normalize_candidate(
                 source="leansearch",
@@ -119,7 +136,7 @@ def _extract_leansearch_candidates(payload: dict, *, query: str) -> list[dict]:
                 path=module or name or query,
                 snippet=snippet or name or query,
                 url=url,
-                score=_coerce_float(item.get("score") or item.get("_score")),
+                score=_coerce_float(item.get("score") or item.get("_score") or raw.get("score")),
                 lean_name=name,
                 metadata={"query": query},
             )
@@ -128,7 +145,7 @@ def _extract_leansearch_candidates(payload: dict, *, query: str) -> list[dict]:
 
 
 def _extract_loogle_candidates(payload, *, query: str) -> list[dict]:
-    items = payload if isinstance(payload, list) else payload.get("results") or payload.get("items") or []
+    items = payload if isinstance(payload, list) else payload.get("results") or payload.get("items") or payload.get("hits") or []
     out: list[dict] = []
     for item in items:
         if not isinstance(item, dict):
@@ -187,7 +204,7 @@ async def search_leansearch(statement: str, keywords: list[str], *, top_k: int =
             try:
                 payload = None
                 ordered_attempts = {
-                    "post_json": {"json": {"query": query, "size": top_k}},
+                    "post_json": {"json": {"query": [query], "size": top_k}},
                     "post_form": {"data": {"query": query, "size": top_k}},
                     "get": {"params": {"q": query, "query": query, "size": top_k}},
                 }

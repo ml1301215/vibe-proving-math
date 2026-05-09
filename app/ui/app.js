@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   vibe_proving — app.js  v3
+   vibe proving — app.js  v3
    架构: AppState → UI.sync → DOM
    纯原生 JS，无构建步骤。
 ═══════════════════════════════════════════════════════════════ */
@@ -27,7 +27,7 @@ const I18N = {
       homeTip: '返回主界面',
     },
     home: {
-      title: 'vibe_proving',
+      title: 'vibe proving',
       tagline: '数学工作者的推理伙伴',
       subTagline: '严谨 · 可验证 · 不逢迎',
       examples: '示例提示词',
@@ -191,7 +191,7 @@ const I18N = {
       },
     },
     docs: {
-      title: 'vibe_proving — 使用指南',
+      title: 'vibe proving — 使用指南',
       btnTitle: '使用指南',
       heroPara: '为数学工作者设计的推理伙伴。不逢迎、可验证、追求严谨。',
       modulesTitle: '核心功能',
@@ -223,7 +223,7 @@ const I18N = {
       homeTip: 'Back to home',
     },
     home: {
-      title: 'vibe_proving',
+      title: 'vibe proving',
       tagline: 'A reasoning companion',
       subTagline: 'Rigorous · Verifiable · Honest',
       examples: 'Example prompts',
@@ -387,7 +387,7 @@ const I18N = {
       },
     },
     docs: {
-      title: 'vibe_proving — User Guide',
+      title: 'vibe proving — User Guide',
       btnTitle: 'User Guide',
       heroPara: 'Rigorous · Verifiable · Honest.',
       modulesTitle: 'Four Core Modules',
@@ -638,7 +638,7 @@ function _renderDocsModal(lang) {
   const tipLabel = lang === 'zh' ? '提示' : 'Tip';
   const tipSection = d.tip ? `<div class="docs-section docs-tip"><strong>${tipLabel}：</strong>${d.tip}</div>` : '';
   body.innerHTML =
-    `<div class="docs-hero"><h2>vibe_proving</h2><p>${d.heroPara}</p></div>` +
+    `<div class="docs-hero"><h2>vibe proving</h2><p>${d.heroPara}</p></div>` +
     `<div class="docs-section"><h3>${d.modulesTitle}</h3><div class="docs-grid">${cards}</div></div>` +
     `<div class="docs-section"><h3>${d.kbTitle}</h3><p>${d.kbDesc}</p><div class="docs-steps">${steps}</div></div>` +
     tipSection;
@@ -2477,7 +2477,7 @@ const _WAIT_TIPS = {
     '实变函数中 Lebesgue 积分取代 Riemann 积分的关键优势：它能处理 Riemann 积分无法定义的函数（如处处不连续的 Dirichlet 函数），并满足更好的极限定理',
     '庞加莱回归定理：在某些动力系统中，几乎所有轨道都会无限次地回到起点附近——这意味着一个封闭的物理系统在足够长时间后会"几乎"回到初始状态',
     '"问题求解"模式可以处理多步骤证明；如果某一步你已知，可以在输入中明确说明"假设引理 X 成立"，AI 会以此为基础继续推导',
-    '我爱数学，这就是我为什么开发 vibe_proving。',
+    '我爱数学，这就是我为什么开发 vibe proving。',
   ],
   en: [
     // ── Feature introductions ──
@@ -3086,17 +3086,26 @@ function updateConfigState(llm = {}, configPath = '') {
   if (source) source.textContent = configPath || '';
 }
 
+function applyApiConfigVisibility(canConfigure) {
+  document.querySelectorAll('.api-config-section').forEach(section => {
+    section.style.display = canConfigure ? '' : 'none';
+  });
+}
+
 function updateUserUi() {
   const user = AppState.user;
   const nameEl = document.getElementById('user-name-display');
   const quotaEl = document.getElementById('user-quota-display');
   if (nameEl) nameEl.textContent = user?.username || '';
-  if (quotaEl && user) quotaEl.textContent = `${user.quota_remaining}/${user.quota_limit}`;
+  if (quotaEl && user) {
+    quotaEl.textContent = user.quota_unlimited ? 'Quota ∞' : `Quota ${user.quota_remaining}/${user.quota_limit}`;
+  }
 }
 
 function applyConfigToUi(cfg) {
   if (!cfg) return;
   AppState.config = cfg;
+  applyApiConfigVisibility(cfg.auth?.can_configure_api !== false);
   if (cfg.user) {
     AppState.user = cfg.user;
     AppState.userId = cfg.user.id;
@@ -3148,7 +3157,7 @@ async function refreshCurrentUser() {
 }
 
 function showAuth(errorText = '') {
-  document.getElementById('auth-view')?.style && (document.getElementById('auth-view').style.display = '');
+  document.getElementById('auth-view')?.style && (document.getElementById('auth-view').style.display = 'flex');
   document.getElementById('app-shell')?.style && (document.getElementById('app-shell').style.display = 'none');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.textContent = errorText || '';
@@ -6209,7 +6218,10 @@ async function checkHealth() {
     const data = await resp.json();
     const llmStatus = data.dependencies?.llm?.status || '--';
     setStatus('status-llm', llmStatus === 'ok' ? 'ok' : llmStatus);
-    const nanStatus = data.dependencies?.nanonets?.status || data.dependencies?.paper_review_agent?.nanonets?.status || '--';
+    const nanConfigured = data.dependencies?.nanonets?.api_key_configured || AppState.config?.nanonets?.api_key_configured;
+    const nanStatus = data.dependencies?.nanonets?.status
+      || data.dependencies?.paper_review_agent?.nanonets?.status
+      || (nanConfigured ? 'ok' : '--');
     setStatus('status-nanonets', nanStatus === 'ok' ? 'ok' : nanStatus);
     if (dot) { dot.textContent = '●'; dot.className = 'health-dot online'; }
 
@@ -6718,6 +6730,10 @@ function bindEvents() {
 async function finishAppInitAfterAuth() {
   showAppShell();
   AppState.view = 'home';
+  const homeEl = document.getElementById('home-view');
+  const chatEl = document.getElementById('chat-view');
+  if (homeEl) homeEl.style.display = 'flex';
+  if (chatEl) chatEl.style.display = 'none';
   updateUserUi();
   UI.switchView(AppState.view);
   UI.updateMode(AppState.mode);
@@ -6753,7 +6769,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await authMe();
       AppState.user = data.user;
       AppState.userId = data.user?.id || '';
-      showAuth();
+      applyApiConfigVisibility(data.auth?.can_configure_api !== false);
+      await finishAppInitAfterAuth();
     } catch {
       showAuth();
     }

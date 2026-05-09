@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   vibe-proving:
     build:
@@ -14,10 +12,6 @@ services:
       - ./app/config.toml:/app/config.toml
       # 可选：挂载数据目录（持久化数据）
       - ./data:/app/data
-    environment:
-      # 可选：通过环境变量覆盖配置
-      # VP_CONFIG_PATH: /app/config.toml
-      - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   vibe_proving UI — Design System v2
+   vibe proving UI — Design System v2
    三栏布局：左导航 200px | 主内容 flex-grow | 右设置面板 280px
    支持浅色/深色模式（data-theme="dark"）
 ════════════════════════════════════════════════════════════════ */
@@ -80,6 +80,7 @@
 }
 
 .auth-view {
+  width: 100vw;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -224,6 +225,13 @@ a:hover { text-decoration: underline; }
 
 /* ── 整体布局 ─────────────────────────────────────────────────── */
 body { display: flex; height: 100vh; }
+
+#app-shell {
+  width: 100vw;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+}
 
 /* ════════════════════════════════════════════════════════════════
    左侧导航栏
