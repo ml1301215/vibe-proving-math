@@ -716,6 +716,8 @@ function escapeHtml(s) {
 }
 
 function initRenderer() {
+  if (typeof marked === 'undefined') return;
+
   if (typeof hljs !== 'undefined') {
     if (typeof hljs.registerLanguage === 'function' && hljs.getLanguage && !hljs.getLanguage('lean')) {
       try {
@@ -1064,7 +1066,9 @@ function _renderOneSegment(seg) {
   if (_MD_CACHE.has(seg)) return _MD_CACHE.get(seg);
   let html;
   try {
-    html = marked.parse(preRenderDisplayMath(autoWrapMath(seg)));
+    html = typeof marked !== 'undefined'
+      ? marked.parse(preRenderDisplayMath(autoWrapMath(seg)))
+      : `<p>${escapeHtml(seg).replace(/\n/g, '<br>')}</p>`;
   } catch {
     html = `<pre>${escapeHtml(seg)}</pre>`;
   }
@@ -4317,6 +4321,9 @@ function renderMd(text) {
   const s = normalizeEscapedNewlines(String(text)).trim();
   if (!s) return '';
   try {
+    if (typeof marked === 'undefined') {
+      return escapeHtml(s).replace(/\n/g, '<br>');
+    }
     return marked.parse(autoWrapMath(s));
   } catch {
     return escapeHtml(s).replace(/\n/g, '<br>');
@@ -6727,7 +6734,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let didBind = false;
   const doInit = async () => {
     applyTheme(detectTheme());
-    initRenderer();
+    try {
+      initRenderer();
+    } catch (err) {
+      console.warn('Renderer initialization failed; continuing with plain text fallback.', err);
+    }
     applyLang(detectLang());
     _syncLangTopbar();
     if (!didBind) {
