@@ -1,5 +1,5 @@
 # vibe_proving 配置示例
-# 复制为 config.toml 后填写密钥，或通过环境变量 VP_CONFIG_PATH 指向你的配置文件。
+# 复制为 config.toml 后填写密钥。应用配置固定从 app/config.toml 读取。
 #
 #   cp config.example.toml config.toml
 #
@@ -39,44 +39,61 @@ timeout     = 10
 log_level = "INFO"
 
 [auth]
-# dev: automatically signs in a local default user.
-# prod: requires username/password login for UI and protected APIs.
+# 开发者部署选项，不在用户 UI 中暴露：
+# dev: 自动登录本地默认用户，便于开发测试。
+# prod: UI 和受保护 API 都要求用户名/密码登录。
 mode = "dev"
 default_user = "dev_user"
 session_days = 30
 default_quota = 50
 allow_register = true
 database_path = "data/app.db"
+cookie_secure = false
 
 [paper_review_agent]
 grobid_url = ""
 grobid_use_public_demo = false
 grobid_public_demo_url = "https://grobidorg-grobid.hf.space"
 mathpix_base_url = "https://api.mathpix.com"
+mathpix_app_id = ""
+mathpix_app_key = ""
 mistral_ocr_url = ""
 
 [nanonets]
-# https://extraction-api.nanonets.com — 也可用环境变量 NANONETS_API_KEY
+# https://extraction-api.nanonets.com
 api_key = ""
 max_poll_seconds = 900
 poll_interval_seconds = 2
 request_timeout_seconds = 120
 
 [mineru]
-# https://mineru.net/apiManage/docs — 也可用环境变量 MINERU_TOKEN
+# https://mineru.net/apiManage/docs
 token = ""
 
-[formalization_models]
-default   = "gpt-4o"
-keywords  = "gpt-4o"
-validate  = "gpt-4o"
-blueprint = "gpt-4o"
-generate  = "gpt-4o"
-repair    = "gpt-4o"
-
-# Harmonic Aristotle — https://aristotle.harmonic.fun （也可用环境变量 ARISTOTLE_API_KEY）
+# Harmonic Aristotle — https://aristotle.harmonic.fun
 [aristotle]
 api_key                       = ""
 formalize_timeout_seconds     = 1800
 prove_timeout_seconds         = 1800
 poll_interval_seconds         = 15
+
+[formalization]
+leansearch_url = "https://leansearch.net/search"
+loogle_url = "https://loogle.lean-lang.org/json"
+external_search_timeout_seconds = 4.0
+keyword_timeout_seconds = 10
+retrieval_timeout_seconds = 20
+validation_timeout_seconds = 12
+blueprint_timeout_seconds = 20
+generate_timeout_seconds = 28
+repair_timeout_seconds = 24
+verify_timeout_seconds = 90
+beam_width = 1
+github_token = ""
+
+[kimina]
+url = ""
+api_key = ""
+timeout_seconds = 120
+allow_local_fallback = true
+mathlib_project = ""

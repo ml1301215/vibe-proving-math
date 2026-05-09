@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import tempfile
 import time
 from pathlib import Path
@@ -17,9 +16,6 @@ _JOB_SNAPSHOTS: dict[str, dict[str, Any]] = {}
 
 
 def _read_api_key() -> str:
-    raw = (os.environ.get("ARISTOTLE_API_KEY") or "").strip()
-    if raw:
-        return raw
     cfg = aristotle_cfg()
     return str(cfg.get("api_key") or "").strip()
 
@@ -33,7 +29,7 @@ def ensure_aristotle_api_key_set() -> None:
 
     key = _read_api_key()
     if not key:
-        raise ValueError("Aristotle API key 未配置（[aristotle].api_key 或 ARISTOTLE_API_KEY）")
+        raise ValueError("Aristotle API key 未配置（config.toml [aristotle].api_key）")
     set_api_key(key)
 
 

@@ -14,13 +14,13 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import os
 import time
 import zipfile
 from typing import Awaitable, Callable, List, Optional
 
 import httpx
 
+from core.config import mineru_cfg
 from core.pdf_fix import fix_all, split_markdown_into_chunks
 
 logger = logging.getLogger(__name__)
@@ -64,10 +64,10 @@ async def extract_pdf_markdown(
         _record_error(last_error, "PDF 内容为空")
         return None
 
-    token = (token or os.environ.get("MINERU_TOKEN") or "").strip()
+    token = (token or mineru_cfg().get("token") or "").strip()
     if not token:
-        logger.info("未配置 MINERU_TOKEN，跳过 MinerU 解析")
-        _record_error(last_error, "未配置 MinerU Token（MINERU_TOKEN 或 config.toml [mineru].token）")
+        logger.info("未配置 MinerU token，跳过 MinerU 解析")
+        _record_error(last_error, "未配置 MinerU Token（config.toml [mineru].token）")
         return None
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}

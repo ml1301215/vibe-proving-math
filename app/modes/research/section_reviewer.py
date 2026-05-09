@@ -463,7 +463,7 @@ async def run_pdf_nanonets_section_review(
             "location": source,
             "issue_type": "parse_failed",
             "description": msg,
-            "fix_suggestion": "检查 NANONETS_API_KEY / 网络 / PDF 是否损坏；查看 Nanonets 控制台任务状态。",
+            "fix_suggestion": "检查 config.toml 或用户设置里的 Nanonets API Key、网络连接、PDF 是否损坏；查看 Nanonets 控制台任务状态。",
             "confidence": 1.0,
         }
         return SectionReviewFinalReport(

@@ -80,7 +80,7 @@ async def extract_pdf_markdown_nanonets(
             ok=False,
             markdown="",
             error_code="missing_api_key",
-            error_message="未配置 Nanonets API Key（表单 nanonets_api_key / 环境变量 NANONETS_API_KEY / config.toml [nanonets].api_key）。",
+            error_message="未配置 Nanonets API Key（表单 nanonets_api_key / config.toml [nanonets].api_key）。",
         )
 
     headers = {"Authorization": f"Bearer {key}"}

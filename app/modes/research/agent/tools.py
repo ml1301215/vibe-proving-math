@@ -4,7 +4,6 @@ import asyncio
 import base64
 import json
 import logging
-import os
 import xml.etree.ElementTree as ET
 from typing import Optional
 
@@ -30,29 +29,29 @@ _DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 _docling_extract_page_texts = extract_docling_page_texts
 
 
-def _agent_cfg_value(env_name: str, config_key: str, default: str = "") -> str:
-    env_value = os.environ.get(env_name, "").strip()
-    if env_value:
-        return env_value
+def _agent_cfg_value(config_key: str, default: str = "") -> str:
     return str(paper_review_agent_cfg().get(config_key, default) or default).strip()
 
 
 def _mathpix_base_url() -> str:
-    return _agent_cfg_value("VP_MATHPIX_BASE_URL", "mathpix_base_url", "https://api.mathpix.com").rstrip("/")
+    return _agent_cfg_value("mathpix_base_url", "https://api.mathpix.com").rstrip("/")
+
+
+def _mathpix_credentials() -> tuple[str, str]:
+    cfg = paper_review_agent_cfg()
+    return str(cfg.get("mathpix_app_id") or "").strip(), str(cfg.get("mathpix_app_key") or "").strip()
 
 
 def _mistral_ocr_proxy() -> str:
-    return _agent_cfg_value("VP_MISTRAL_OCR_URL", "mistral_ocr_url", "")
+    return _agent_cfg_value("mistral_ocr_url", "")
 
 
 def _grobid_base_url() -> str:
-    configured = _agent_cfg_value("VP_GROBID_URL", "grobid_url", "").rstrip("/")
+    configured = _agent_cfg_value("grobid_url", "").rstrip("/")
     if configured:
         return configured
 
-    use_public_demo = os.environ.get("VP_GROBID_USE_PUBLIC_DEMO", "").strip().lower()
-    if not use_public_demo:
-        use_public_demo = str(paper_review_agent_cfg().get("grobid_use_public_demo", False)).strip().lower()
+    use_public_demo = str(paper_review_agent_cfg().get("grobid_use_public_demo", False)).strip().lower()
     if use_public_demo in {"1", "true", "yes", "on"}:
         return str(paper_review_agent_cfg().get("grobid_public_demo_url", "https://grobidorg-grobid.hf.space")).strip().rstrip("/")
     return ""
@@ -210,7 +209,7 @@ async def check_agent_tool_health() -> dict:
             else:
                 health["grobid"] = {"status": "unreachable", "url": grobid_url, "source": source, "error": f"{type(exc).__name__}: {exc}"}
 
-    if os.environ.get("MATHPIX_APP_ID", "").strip() and os.environ.get("MATHPIX_APP_KEY", "").strip():
+    if all(_mathpix_credentials()):
         health["mathpix"] = {"status": "configured", "base_url": _mathpix_base_url()}
 
     mistral_url = _mistral_ocr_proxy()
@@ -221,8 +220,7 @@ async def check_agent_tool_health() -> dict:
 
 
 async def _try_mathpix_page_ocr(pdf_bytes: bytes, *, source: str, page_num: int) -> str:
-    app_id = os.environ.get("MATHPIX_APP_ID", "").strip()
-    app_key = os.environ.get("MATHPIX_APP_KEY", "").strip()
+    app_id, app_key = _mathpix_credentials()
     if not app_id or not app_key:
         return ""
 
@@ -303,7 +301,8 @@ async def parse_pdf_fallback_tool(
 
     replacements: dict[int, str] = {}
 
-    if os.environ.get("MATHPIX_APP_ID", "").strip() and os.environ.get("MATHPIX_APP_KEY", "").strip():
+    used_mathpix = False
+    if all(_mathpix_credentials()):
         for page in pages:
             try:
                 recovered = await _try_mathpix_page_ocr(context.pdf_bytes, source=context.source, page_num=page)
@@ -312,6 +311,7 @@ async def parse_pdf_fallback_tool(
                 recovered = ""
             if recovered:
                 replacements[page] = recovered
+                used_mathpix = True
 
     if not replacements and _mistral_ocr_proxy():
         replacements = await _try_mistral_proxy_ocr(context.pdf_bytes, source=context.source, pages=pages, lang=lang)
@@ -320,7 +320,7 @@ async def parse_pdf_fallback_tool(
         for page_num, text in replacements.items():
             if 1 <= page_num <= len(context.page_texts):
                 context.page_texts[page_num - 1] = text
-        context.parser_source = "mathpix" if os.environ.get("MATHPIX_APP_ID", "").strip() else "mistral_ocr"
+        context.parser_source = "mathpix" if used_mathpix else "mistral_ocr"
         context.parsed_pages = build_parsed_pages_from_texts(context.page_texts, parser_source=context.parser_source)
         quality_score, low_conf_pages, page_scores = evaluate_document_quality(context.parsed_pages)
         context.quality_score = quality_score

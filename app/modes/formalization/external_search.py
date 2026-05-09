@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import re
 from typing import Optional
 
 import httpx
+from core.config import formalization_cfg
 
 logger = logging.getLogger("modes.formalization")
 
-_LEANSEARCH_URL = os.environ.get("VP_LEANSEARCH_URL", "https://leansearch.net/search").strip()
-_LOOGLE_URL = os.environ.get("VP_LOOGLE_URL", "https://loogle.lean-lang.org/json").strip()
-_EXTERNAL_SEARCH_TIMEOUT_SECONDS = float(os.environ.get("VP_EXTERNAL_SEARCH_TIMEOUT", "4.0"))
+_FORM_CFG = formalization_cfg()
+_LEANSEARCH_URL = str(_FORM_CFG.get("leansearch_url") or "https://leansearch.net/search").strip()
+_LOOGLE_URL = str(_FORM_CFG.get("loogle_url") or "https://loogle.lean-lang.org/json").strip()
+_EXTERNAL_SEARCH_TIMEOUT_SECONDS = float(_FORM_CFG.get("external_search_timeout_seconds") or 4.0)
 _LEANSEARCH_MODE: Optional[str] = None
 _LEANSEARCH_DISABLED = False
 _LEANSEARCH_DISABLE_REASON = ""

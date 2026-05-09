@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import logging.config
-import os
 import sys
 from typing import Optional
 
@@ -24,9 +23,9 @@ from typing import Optional
 def setup_logging(level: Optional[str] = None) -> None:
     """配置全局日志格式和级别。
 
-    level 优先级：参数 > 环境变量 LOG_LEVEL > 默认 INFO
+    level 优先级：参数 > 默认 INFO
     """
-    _level = (level or os.getenv("LOG_LEVEL", "INFO")).upper()
+    _level = (level or "INFO").upper()
     numeric_level = getattr(logging, _level, logging.INFO)
 
     # 格式：时间 | 级别 | 模块 | 消息

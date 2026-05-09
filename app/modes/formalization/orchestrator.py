@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-import os
 import re
 import time
 from typing import AsyncIterator, Optional
@@ -18,6 +17,7 @@ from modes.formalization.models import (
     VerificationReport,
 )
 from modes.formalization.tools import FormalizationTools
+from core.config import formalization_cfg
 
 from core.aristotle_client import (
     aristotle_runtime_settings,
@@ -27,14 +27,15 @@ from core.aristotle_client import (
 )
 
 MATHLIB_MATCH_THRESHOLD = 0.72
-_KEYWORD_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_KEYWORDS", "10"))
-_RETRIEVAL_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_RETRIEVAL", "20"))
-_VALIDATION_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_VALIDATION", "12"))
-_BLUEPRINT_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_BLUEPRINT", "20"))
-_GENERATE_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_GENERATE", "28"))
-_REPAIR_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_REPAIR", "24"))
-_VERIFY_STEP_TIMEOUT_SECONDS = float(os.environ.get("VP_FORMALIZE_TIMEOUT_VERIFY", "90"))
-_BEAM_WIDTH = int(os.environ.get("VP_FORMALIZE_BEAM_WIDTH", "1") or "1")
+_FORM_CFG = formalization_cfg()
+_KEYWORD_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("keyword_timeout_seconds") or 10)
+_RETRIEVAL_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("retrieval_timeout_seconds") or 20)
+_VALIDATION_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("validation_timeout_seconds") or 12)
+_BLUEPRINT_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("blueprint_timeout_seconds") or 20)
+_GENERATE_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("generate_timeout_seconds") or 28)
+_REPAIR_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("repair_timeout_seconds") or 24)
+_VERIFY_STEP_TIMEOUT_SECONDS = float(_FORM_CFG.get("verify_timeout_seconds") or 90)
+_BEAM_WIDTH = int(_FORM_CFG.get("beam_width") or 1)
 
 
 def _default_hint(status: str, failure_mode: str, *, lang: str = "zh") -> str:

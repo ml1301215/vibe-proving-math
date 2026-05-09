@@ -13,14 +13,12 @@ from urllib.parse import urlparse
 
 import httpx
 
+from core.config import kimina_cfg
 from modes.formalization.models import VerificationReport
 
 logger = logging.getLogger("modes.formalization")
 
 _LEAN_VERIFY_TIMEOUT_SECONDS = 60.0
-_MATHLIB_PROJECT_ENV_KEYS = ("VP_MATHLIB_PROJECT", "VIBE_PROVING_MATHLIB_PROJECT")
-_KIMINA_URL_ENV_KEYS = ("VP_KIMINA_URL", "KIMINA_URL", "KIMINA_BASE_URL")
-_KIMINA_KEY_ENV_KEYS = ("VP_KIMINA_API_KEY", "KIMINA_API_KEY")
 
 
 @dataclass
@@ -32,29 +30,21 @@ class VerifierConfig:
     allow_local_fallback: bool = True
 
 
-def _read_first_env(keys: tuple[str, ...], default: str = "") -> str:
-    for key in keys:
-        value = os.environ.get(key, "").strip()
-        if value:
-            return value
-    return default
-
-
 def get_verifier_config() -> VerifierConfig:
-    kimina_url = _read_first_env(_KIMINA_URL_ENV_KEYS)
-    api_key = _read_first_env(_KIMINA_KEY_ENV_KEYS)
-    timeout_raw = os.environ.get("VP_KIMINA_TIMEOUT", "").strip()
-    fallback_raw = os.environ.get("VP_KIMINA_FALLBACK_TO_LOCAL", "1").strip().lower()
+    cfg = kimina_cfg()
+    kimina_url = str(cfg.get("url") or "").strip()
+    api_key = str(cfg.get("api_key") or "").strip()
     try:
-        timeout_seconds = float(timeout_raw) if timeout_raw else 120.0
+        timeout_seconds = float(cfg.get("timeout_seconds") or 120.0)
     except ValueError:
         timeout_seconds = 120.0
+    allow_local_fallback = bool(cfg.get("allow_local_fallback", True))
     return VerifierConfig(
         kind="kimina" if kimina_url else "local",
         kimina_url=kimina_url,
         api_key=api_key,
         timeout_seconds=max(3.0, timeout_seconds),
-        allow_local_fallback=fallback_raw not in {"0", "false", "no"},
+        allow_local_fallback=allow_local_fallback,
     )
 
 
@@ -84,17 +74,16 @@ def classify_failure_mode(status: str, error: str) -> str:
 
 
 def _discover_mathlib_project() -> Optional[Path]:
-    for env_key in _MATHLIB_PROJECT_ENV_KEYS:
-        raw = (os.environ.get(env_key) or "").strip()
-        if not raw:
-            continue
-        candidate = Path(raw).expanduser()
-        if (
-            candidate.is_dir()
-            and (candidate / "lean-toolchain").is_file()
-            and ((candidate / "lakefile.lean").is_file() or (candidate / "lakefile.toml").is_file())
-        ):
-            return candidate
+    raw = str(kimina_cfg().get("mathlib_project") or "").strip()
+    if not raw:
+        return None
+    candidate = Path(raw).expanduser()
+    if (
+        candidate.is_dir()
+        and (candidate / "lean-toolchain").is_file()
+        and ((candidate / "lakefile.lean").is_file() or (candidate / "lakefile.toml").is_file())
+    ):
+        return candidate
     return None
 
 

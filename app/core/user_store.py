@@ -4,7 +4,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import os
 import secrets
 import sqlite3
 import time
@@ -29,7 +28,7 @@ def _auth_config() -> dict[str, Any]:
         cfg.update(auth_cfg())
     except Exception:
         pass
-    cfg["mode"] = str(os.environ.get("VP_AUTH_MODE") or cfg.get("mode") or "dev").strip().lower()
+    cfg["mode"] = str(cfg.get("mode") or "dev").strip().lower()
     return cfg
 
 
@@ -42,7 +41,7 @@ def auth_is_dev() -> bool:
 
 
 def _db_path() -> Path:
-    raw = str(os.environ.get("VP_APP_DB") or _auth_config().get("database_path") or "data/app.db").strip()
+    raw = str(_auth_config().get("database_path") or "data/app.db").strip()
     path = Path(raw).expanduser()
     if not path.is_absolute():
         path = _APP_DIR / path

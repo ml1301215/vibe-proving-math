@@ -1,7 +1,6 @@
 """全局配置加载器，从 config.toml 读取所有配置。"""
 from __future__ import annotations
 
-import os
 import tomllib
 from pathlib import Path
 from functools import lru_cache
@@ -11,9 +10,6 @@ _APP_DIR = Path(__file__).resolve().parent.parent
 
 
 def _config_path() -> Path:
-    raw = (os.environ.get("VP_CONFIG_PATH") or "").strip()
-    if raw:
-        return Path(raw).expanduser()
     return _APP_DIR / "config.toml"
 
 
@@ -34,7 +30,7 @@ def load_config() -> dict[str, Any]:
             f"缺少配置文件: {path}\n"
             f"请复制示例并填写密钥:\n"
             f"  cp {_APP_DIR / 'config.example.toml'} {_APP_DIR / 'config.toml'}\n"
-            "或通过环境变量 VP_CONFIG_PATH 指向配置文件路径。"
+            "配置文件路径固定为 app/config.toml。"
         )
         if example.is_file():
             msg += f"\n（示例文件: {example}）"
@@ -149,10 +145,18 @@ def nanonets_cfg() -> dict[str, Any]:
     return load_config().get("nanonets", {}) or {}
 
 
-def formalization_model_cfg() -> dict[str, Any]:
-    return load_config().get("formalization_models", {})
-
-
 def aristotle_cfg() -> dict[str, Any]:
     """Harmonic Aristotle API（https://aristotle.harmonic.fun）。"""
     return load_config().get("aristotle", {}) or {}
+
+
+def mineru_cfg() -> dict[str, Any]:
+    return load_config().get("mineru", {}) or {}
+
+
+def formalization_cfg() -> dict[str, Any]:
+    return load_config().get("formalization", {}) or {}
+
+
+def kimina_cfg() -> dict[str, Any]:
+    return load_config().get("kimina", {}) or {}

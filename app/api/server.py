@@ -20,7 +20,6 @@ import asyncio
 import base64
 import json
 import sys
-import os
 import time
 from pathlib import Path
 from typing import Optional, AsyncIterator
@@ -59,7 +58,11 @@ from core.user_store import (
 _runtime_config_overrides: dict = {}
 
 # 初始化日志（仅调用一次）
-setup_logging()
+try:
+    _startup_config = load_config()
+except FileNotFoundError:
+    _startup_config = {}
+setup_logging(level=(_startup_config.get("app") or {}).get("log_level", "INFO"))
 
 import logging
 logger = logging.getLogger("api.server")
@@ -297,7 +300,6 @@ async def auth_me(request: Request):
     return {
         "user": _safe_public_user(user),
         "auth": {
-            "mode": "dev" if auth_is_dev() else "prod",
             "allow_register": True if auth_is_dev() else bool((load_config().get("auth", {}) or {}).get("allow_register", True)),
         },
     }
@@ -314,7 +316,7 @@ async def auth_login(req: AuthRequest, response: Response):
         token,
         httponly=True,
         samesite="lax",
-        secure=bool(os.environ.get("VP_COOKIE_SECURE")),
+        secure=bool((load_config().get("auth", {}) or {}).get("cookie_secure", False)),
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
@@ -336,7 +338,7 @@ async def auth_register(req: AuthRequest, response: Response):
         token,
         httponly=True,
         samesite="lax",
-        secure=bool(os.environ.get("VP_COOKIE_SECURE")),
+        secure=bool((load_config().get("auth", {}) or {}).get("cookie_secure", False)),
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
@@ -1002,8 +1004,6 @@ async def review_pdf_stream(
     from modes.research.reviewer import review_text, review_paper_images
     from modes.research.section_reviewer import run_pdf_nanonets_section_review
 
-    import os as _os
-
     def _resolve_nanonets_key() -> str:
         k = (nanonets_api_key or "").strip()
         if k:
@@ -1014,9 +1014,6 @@ async def review_pdf_stream(
             return k
         # 运行时覆盖（通过 POST /config/nanonets 写入）
         k = str(_runtime_config_overrides.get("nanonets", {}).get("api_key", "")).strip()
-        if k:
-            return k
-        k = (str(_os.environ.get("NANONETS_API_KEY") or "")).strip()
         if k:
             return k
         _cfg_n = load_config().get("nanonets")

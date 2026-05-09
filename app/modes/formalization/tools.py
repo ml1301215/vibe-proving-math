@@ -3,15 +3,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Optional
 
 import httpx
 
-from core.config import formalization_model_cfg
 from core.llm import chat_json, lang_sys_suffix
+from core.config import formalization_cfg
 from modes.formalization.external_search import search_external_mathlib
 from modes.formalization.models import (
     FormalizationBlueprint,
@@ -68,21 +67,6 @@ _KEYWORD_ALIAS_RULES: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
     (("平方非负", "square nonnegative", "square is nonnegative"), ("sq_nonneg",)),
 )
 
-_FORMALIZATION_MODEL_CFG = formalization_model_cfg()
-_FORMALIZE_DEFAULT_MODEL = (
-    os.environ.get("VP_FORMALIZE_MODEL_DEFAULT")
-    or _FORMALIZATION_MODEL_CFG.get("default")
-    or "gpt-5.3-codex"
-)
-_FORMALIZE_STAGE_MODELS = {
-    "keywords": os.environ.get("VP_FORMALIZE_MODEL_KEYWORDS") or _FORMALIZATION_MODEL_CFG.get("keywords"),
-    "validate": os.environ.get("VP_FORMALIZE_MODEL_VALIDATE") or _FORMALIZATION_MODEL_CFG.get("validate"),
-    "blueprint": os.environ.get("VP_FORMALIZE_MODEL_BLUEPRINT") or _FORMALIZATION_MODEL_CFG.get("blueprint"),
-    "generate": os.environ.get("VP_FORMALIZE_MODEL_GENERATE") or _FORMALIZATION_MODEL_CFG.get("generate"),
-    "repair": os.environ.get("VP_FORMALIZE_MODEL_REPAIR") or _FORMALIZATION_MODEL_CFG.get("repair"),
-}
-
-
 def _safe_float(value, default: float = 0.0) -> float:
     try:
         return float(value)
@@ -93,10 +77,7 @@ def _safe_float(value, default: float = 0.0) -> float:
 def _resolve_formalization_model(stage: str, override: Optional[str] = None) -> str:
     if override:
         return str(override).strip()
-    stage_model = _FORMALIZE_STAGE_MODELS.get(stage)
-    if stage_model:
-        return str(stage_model).strip()
-    return str(_FORMALIZE_DEFAULT_MODEL).strip()
+    return ""
 
 
 def _extract_theorem_statement(lean_code: str) -> str:
@@ -146,7 +127,7 @@ def _deterministic_repair_candidate(
 
 
 def _get_github_token() -> str:
-    return os.environ.get("GITHUB_TOKEN", "").strip()
+    return str(formalization_cfg().get("github_token") or "").strip()
 
 
 def _normalize_search_keyword(token: str) -> str:
