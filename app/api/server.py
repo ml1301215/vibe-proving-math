@@ -66,6 +66,38 @@ import logging
 logger = logging.getLogger("api.server")
 
 
+def _configured(value: object) -> str:
+    return "yes" if str(value or "").strip() else "no"
+
+
+def _log_startup_summary(cfg: dict) -> None:
+    llm = cfg.get("llm") or {}
+    auth = cfg.get("auth") or {}
+    theorem_search = cfg.get("theorem_search") or {}
+    nanonets = cfg.get("nanonets") or {}
+    mineru = cfg.get("mineru") or {}
+    aristotle = cfg.get("aristotle") or {}
+    logger.info(
+        "Startup config: config=%s, llm_model=%s, llm_base=%s, llm_key=%s, superuser=%s, quota_default=%s",
+        config_path(),
+        llm.get("model") or "",
+        llm.get("base_url") or "",
+        _configured(llm.get("api_key")),
+        auth.get("superuser_username") or "dev_user",
+        auth.get("default_quota", 50),
+    )
+    logger.info(
+        "External services: theorem_search=%s, nanonets_key=%s, mineru_base=%s, aristotle_key=%s",
+        theorem_search.get("base_url") or "",
+        _configured(nanonets.get("api_key")),
+        mineru.get("base_url") or "",
+        _configured(aristotle.get("api_key")),
+    )
+
+
+_log_startup_summary(_startup_config)
+
+
 async def _ingest_memory_best_effort(user_id: str, project_id: str, turns: list[dict]) -> None:
     """Run LATRACE ingest outside the response path and always close its client."""
     try:
@@ -190,6 +222,101 @@ async def auth_middleware(request: Request, call_next):
             return JSONResponse(status_code=401, content={"detail": "请先登录"})
     return await call_next(request)
 
+
+_LOGGED_PATH_PREFIXES = (
+    "/learn",
+    "/solve",
+    "/review",
+    "/formalize",
+    "/search",
+    "/config",
+    "/history",
+    "/projects",
+    "/auth/login",
+    "/auth/register",
+    "/auth/logout",
+)
+
+
+def _should_log_request(path: str) -> bool:
+    return any(path.startswith(prefix) for prefix in _LOGGED_PATH_PREFIXES)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",", 1)[0].strip()
+    return request.client.host if request.client else "-"
+
+
+def _request_user_label(request: Request) -> str:
+    user = getattr(request.state, "user", None)
+    if not user:
+        return "anonymous"
+    username = user.get("username") or user.get("id") or "unknown"
+    role = "admin" if user.get("is_admin") else "user"
+    return f"{username}({role})"
+
+
+def _user_label(user: dict | None) -> str:
+    if not user:
+        return "anonymous"
+    username = user.get("username") or user.get("id") or "unknown"
+    role = "admin" if user.get("is_admin") else "user"
+    return f"{username}({role})"
+
+
+def _quota_label(request: Request) -> str:
+    user = getattr(request.state, "user", None)
+    if not user:
+        return "-"
+    if user.get("is_admin"):
+        return "unlimited"
+    remaining = user.get("quota_remaining")
+    limit = user.get("quota_limit")
+    return f"{remaining}/{limit}"
+
+
+@app.middleware("http")
+async def request_log_middleware(request: Request, call_next):
+    path = request.url.path
+    log_this = _should_log_request(path)
+    started = time.perf_counter()
+    if log_this:
+        if not getattr(request.state, "user", None) and not path.startswith("/auth/"):
+            _request_user(request)
+        logger.info(
+            "Request start: %s %s user=%s client=%s",
+            request.method,
+            path,
+            _request_user_label(request),
+            _client_ip(request),
+        )
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        if log_this:
+            logger.exception(
+                "Request failed: %s %s user=%s elapsed_ms=%d",
+                request.method,
+                path,
+                _request_user_label(request),
+                elapsed_ms,
+            )
+        raise
+    if log_this:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.info(
+            "Request done: %s %s status=%d elapsed_ms=%d quota=%s",
+            request.method,
+            path,
+            response.status_code,
+            elapsed_ms,
+            _quota_label(request),
+        )
+    return response
+
 # 挂载 UI 静态文件：访问 http://localhost:8080/ui/
 _ui_dir = Path(__file__).parent.parent / "ui"
 if _ui_dir.exists():
@@ -303,9 +430,10 @@ async def auth_me(request: Request):
 
 
 @app.post("/auth/login")
-async def auth_login(req: AuthRequest, response: Response):
+async def auth_login(req: AuthRequest, response: Response, request: Request):
     user = authenticate_user(req.username, req.password)
     if not user:
+        logger.info("Auth login failed: username=%s client=%s", req.username, _client_ip(request))
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token, expires = create_session(int(user["id"]))
     response.set_cookie(
@@ -317,17 +445,20 @@ async def auth_login(req: AuthRequest, response: Response):
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
+    logger.info("Auth login succeeded: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"user": _safe_public_user(user)}
 
 
 @app.post("/auth/register")
-async def auth_register(req: AuthRequest, response: Response):
+async def auth_register(req: AuthRequest, response: Response, request: Request):
     cfg = load_config().get("auth", {}) or {}
     if not bool(cfg.get("allow_register", True)):
+        logger.info("Auth register blocked: username=%s client=%s", req.username, _client_ip(request))
         raise HTTPException(status_code=403, detail="注册已关闭")
     try:
         user = create_user(req.username, req.password)
     except ValueError as exc:
+        logger.info("Auth register failed: username=%s client=%s detail=%s", req.username, _client_ip(request), exc)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     token, expires = create_session(int(user["id"]))
     response.set_cookie(
@@ -339,13 +470,16 @@ async def auth_register(req: AuthRequest, response: Response):
         max_age=max(1, expires - int(time.time())),
         path="/",
     )
+    logger.info("Auth register succeeded: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"user": _safe_public_user(user)}
 
 
 @app.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
+    user = _request_user(request)
     delete_session(request.cookies.get(_AUTH_COOKIE, ""))
     response.delete_cookie(_AUTH_COOKIE, path="/")
+    logger.info("Auth logout: user=%s client=%s", _user_label(user), _client_ip(request))
     return {"ok": True}
 
 
@@ -496,6 +630,10 @@ async def _sse_generator(async_gen: AsyncIterator[str]):
     SENTINEL_DONE = object()
     SENTINEL_ERR  = object()
     err_holder: dict = {}
+    started = time.perf_counter()
+    data_chunks = 0
+    keepalives = 0
+    terminal_logged = False
 
     async def _producer():
         try:
@@ -513,6 +651,7 @@ async def _sse_generator(async_gen: AsyncIterator[str]):
 
     async def _emit_frame(chunk: str):
         """把 pipeline yield 的一段拆分为正文/状态/思考链 SSE 帧。"""
+        nonlocal data_chunks
         if not chunk:
             return
         last_end = 0
@@ -576,6 +715,7 @@ async def _sse_generator(async_gen: AsyncIterator[str]):
                 kind, chunk = await asyncio.wait_for(queue.get(), timeout=KEEPALIVE_INTERVAL)
             except asyncio.TimeoutError:
                 # 心跳：注释行（: 开头）SSE 标准支持，浏览器忽略，但可冲洗代理缓冲
+                keepalives += 1
                 yield ": keepalive\n\n"
                 await asyncio.sleep(0)
                 continue
@@ -589,13 +729,25 @@ async def _sse_generator(async_gen: AsyncIterator[str]):
                 break
 
             async for frame in _emit_frame(chunk):
+                data_chunks += 1
                 yield frame
                 await asyncio.sleep(0)  # 让出事件循环，确保立刻 flush
             last_activity = asyncio.get_event_loop().time()
     except asyncio.CancelledError:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.info(
+            "SSE stream cancelled: elapsed_ms=%d frames=%d keepalives=%d",
+            elapsed_ms,
+            data_chunks,
+            keepalives,
+        )
+        terminal_logged = True
         prod_task.cancel()
         raise
     except Exception as e:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.exception("SSE stream failed: elapsed_ms=%d frames=%d", elapsed_ms, data_chunks)
+        terminal_logged = True
         err = json.dumps({"error": f"{type(e).__name__}: {e}"}, ensure_ascii=False)
         yield f"data: {err}\n\n"
     finally:
@@ -605,6 +757,14 @@ async def _sse_generator(async_gen: AsyncIterator[str]):
                 await prod_task
             except (asyncio.CancelledError, Exception):
                 pass
+        if not terminal_logged:
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+            logger.info(
+                "SSE stream finished: elapsed_ms=%d frames=%d keepalives=%d",
+                elapsed_ms,
+                data_chunks,
+                keepalives,
+            )
         yield "data: [DONE]\n\n"
 
 
