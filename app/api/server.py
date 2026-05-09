@@ -143,10 +143,6 @@ def _request_user(request: Request) -> Optional[dict]:
     cached = getattr(request.state, "user", None)
     if cached:
         return cached
-    if auth_is_dev():
-        user = get_or_create_dev_user()
-        request.state.user = user
-        return user
     token = request.cookies.get(_AUTH_COOKIE, "")
     user = get_user_by_session(token)
     if user:
@@ -186,7 +182,8 @@ def _reset_user_llm_context(token) -> None:
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
     if auth_is_dev():
-        request.state.user = get_or_create_dev_user()
+        if any(path.startswith(prefix) for prefix in _PROTECTED_PATH_PREFIXES):
+            request.state.user = get_or_create_dev_user()
         return await call_next(request)
     if path == "/" or any(path.startswith(prefix) for prefix in _PUBLIC_PATH_PREFIXES):
         return await call_next(request)
@@ -307,7 +304,10 @@ async def auth_me(request: Request):
 
 @app.post("/auth/login")
 async def auth_login(req: AuthRequest, response: Response):
-    user = authenticate_user(req.username, req.password)
+    if auth_is_dev():
+        user = get_or_create_dev_user()
+    else:
+        user = authenticate_user(req.username, req.password)
     if not user:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token, expires = create_session(int(user["id"]))

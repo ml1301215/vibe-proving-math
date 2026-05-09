@@ -6717,6 +6717,7 @@ function bindEvents() {
 
 async function finishAppInitAfterAuth() {
   showAppShell();
+  AppState.view = 'home';
   updateUserUi();
   UI.switchView(AppState.view);
   UI.updateMode(AppState.mode);
@@ -6752,7 +6753,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await authMe();
       AppState.user = data.user;
       AppState.userId = data.user?.id || '';
-      await finishAppInitAfterAuth();
+      showAuth();
     } catch {
       showAuth();
     }
