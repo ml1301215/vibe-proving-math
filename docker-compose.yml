@@ -8,9 +8,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 挂载配置文件（用户可以在宿主机编辑）
+      # Host-editable config file
       - ./app/config.toml:/app/config.toml
-      # 可选：挂载数据目录（持久化数据）
+      # Persistent data directory
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
@@ -19,7 +19,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    # 可选：资源限制
+    # Optional resource limits
     deploy:
       resources:
         limits:
@@ -29,7 +29,7 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  # 可选：添加 LATRACE 记忆服务（如果需要）
+  # Optional LATRACE memory service
   # latrace:
   #   image: latrace:latest
   #   container_name: latrace
