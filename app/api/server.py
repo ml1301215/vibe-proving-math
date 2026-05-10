@@ -1318,24 +1318,85 @@ async def search(
     from core.config import ts_cfg
     from skills.search_theorems import search_theorems
 
+    timeout_s = float(ts_cfg().get("timeout", 10) or 10)
+    outer_timeout_s = timeout_s + 3.0
+    user_label = user.get("username") or user.get("id") or "unknown"
+    started = time.perf_counter()
+    last_timeout: asyncio.TimeoutError | None = None
+    last_error: Exception | None = None
+
     try:
-        # 使用 TheoremSearch 配置超时，避免长时间等待外部服务。
-        timeout_s = float(ts_cfg().get("timeout", 10) or 10)
-        results = await asyncio.wait_for(
-            search_theorems(q, top_k=top_k, min_sim=min_similarity),
-            timeout=timeout_s,
-        )
+        # 底层 TheoremSearch HTTP client 使用配置中的 timeout。
+        # 这里的外层超时只作为兜底，必须略大于底层 timeout，避免冷连接 9.x 秒成功时被外层刚好截断。
+        for attempt in range(1, 3):
+            attempt_started = time.perf_counter()
+            try:
+                results = await asyncio.wait_for(
+                    search_theorems(q, top_k=top_k, min_sim=min_similarity),
+                    timeout=outer_timeout_s,
+                )
+                logger.info(
+                    "TheoremSearch request ok: user=%s query=%r top_k=%d attempt=%d elapsed=%.2fs total=%.2fs",
+                    user_label,
+                    q[:80],
+                    top_k,
+                    attempt,
+                    time.perf_counter() - attempt_started,
+                    time.perf_counter() - started,
+                )
+                break
+            except asyncio.TimeoutError as exc:
+                last_timeout = exc
+                logger.warning(
+                    "TheoremSearch request timeout: user=%s query=%r attempt=%d elapsed=%.2fs timeout=%.1fs",
+                    user_label,
+                    q[:80],
+                    attempt,
+                    time.perf_counter() - attempt_started,
+                    outer_timeout_s,
+                )
+                if attempt >= 2:
+                    raise
+                await asyncio.sleep(0.25)
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "TheoremSearch request failed: user=%s query=%r attempt=%d elapsed=%.2fs error=%s",
+                    user_label,
+                    q[:80],
+                    attempt,
+                    time.perf_counter() - attempt_started,
+                    exc,
+                )
+                if attempt >= 2:
+                    raise
+                await asyncio.sleep(0.25)
         return {
             "query": q,
             "count": len(results),
             "results": [r.to_dict() for r in results],
         }
     except asyncio.TimeoutError:
+        if last_timeout:
+            logger.warning(
+                "TheoremSearch request gave up after timeout: user=%s query=%r total=%.2fs",
+                user_label,
+                q[:80],
+                time.perf_counter() - started,
+            )
         raise HTTPException(
             status_code=504,
             detail="TheoremSearch 查询超时，请稍后重试或检查网络连接"
         )
     except Exception as e:
+        if last_error:
+            logger.warning(
+                "TheoremSearch request gave up after error: user=%s query=%r total=%.2fs error=%s",
+                user_label,
+                q[:80],
+                time.perf_counter() - started,
+                e,
+            )
         raise HTTPException(status_code=502, detail=f"TheoremSearch 查询失败: {e}")
 
 
