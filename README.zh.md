@@ -143,21 +143,9 @@
 
 **要求：** Python 3.11 或更高版本
 
-### Docker（推荐）
+### Docker
 
-```bash
-git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math
-
-# Linux/macOS
-chmod +x docker-start.sh
-./docker-start.sh
-
-# Windows
-docker-start.bat
-```
-
-手动 Docker 启动：
+先安装并启动 Docker（Windows/macOS 用 Docker Desktop，Linux 用 Docker Engine），然后一次性配置并启动：
 
 ```bash
 git clone https://github.com/ml1301215/vibe-proving-math.git
@@ -195,7 +183,7 @@ cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-#### Windows (PowerShell)
+#### Windows
 
 ```powershell
 git clone https://github.com/ml1301215/vibe-proving-math.git
@@ -209,19 +197,7 @@ cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-#### Windows (命令提示符)
-
-```cmd
-git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math
-python -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
-copy app\config.example.toml app\config.toml
-REM 编辑 app\config.toml，设置超级账户密码和 API 密钥
-cd app
-python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
-```
+如果使用命令提示符，把 `.venv\Scripts\Activate.ps1` 换成 `.venv\Scripts\activate.bat`。
 
 **在浏览器中打开 `http://127.0.0.1:8080/ui/`。**
 

@@ -143,39 +143,20 @@ Powered by [Harmonic Aristotle](https://aristotle.harmonic.fun):
 
 **Requirements:** Python 3.11+ or Docker
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker
 
-**Fastest way to get started:**
+Install and start Docker first: Docker Desktop for Windows/macOS, or Docker Engine on Linux. Then configure and run:
 
 ```bash
 git clone https://github.com/ml1301215/vibe-proving-math.git
 cd vibe-proving-math
 
-# Linux/macOS
-chmod +x docker-start.sh
-./docker-start.sh
-
-# Windows
-docker-start.bat
-```
-
-**Manual Docker setup:**
-
-```bash
-# 1. Clone repository
-git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math
-
-# 2. Create config file
 cp app/config.example.toml app/config.toml
 # Edit app/config.toml:
 #   - set [auth].superuser_password
 #   - add your [llm] API endpoint/key/model
 
-# 3. Start with Docker Compose
 docker compose up -d
-
-# 4. Check status
 docker compose ps
 docker compose logs -f
 ```
@@ -200,7 +181,7 @@ cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-#### Windows (PowerShell)
+#### Windows
 
 ```powershell
 git clone https://github.com/ml1301215/vibe-proving-math.git
@@ -214,19 +195,7 @@ cd app
 python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
 ```
 
-#### Windows (Command Prompt)
-
-```cmd
-git clone https://github.com/ml1301215/vibe-proving-math.git
-cd vibe-proving-math
-python -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
-copy app\config.example.toml app\config.toml
-REM Edit app\config.toml and add your superuser password and API keys
-cd app
-python -m uvicorn api.server:app --host 127.0.0.1 --port 8080
-```
+For Command Prompt, use `.venv\Scripts\activate.bat` instead of `.venv\Scripts\Activate.ps1`.
 
 ### Configuration
 

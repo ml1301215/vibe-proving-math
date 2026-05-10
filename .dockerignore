@@ -14,13 +14,13 @@ htmlcov/
 build/
 dist/
 
-# 虚拟环境
+# Virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# 编辑器
+# Editors
 .vscode/
 .idea/
 .DS_Store
@@ -33,7 +33,7 @@ ENV/
 .gitignore
 .gitattributes
 
-# 项目专属
+# Project-specific generated files
 app_server_*.log
 app/_iter_*.log
 app/_inspect*.py
@@ -47,7 +47,7 @@ app/eval_results*.json
 app/.eval_cache_api.json
 app/eval_cache/
 
-# 数据和缓存
+# Data and caches
 *.sqlite
 *.sqlite3
 *.db
@@ -57,18 +57,17 @@ data/cache/
 data/memory/
 data/raw/
 
-# 密钥和配置（Docker镜像不应包含真实密钥）
-# 注意：config.toml 通过 volume 挂载，不打包进镜像
+# Secrets and config. config.toml is mounted by Docker Compose.
 app/config.toml
 
-# 测试文件
+# Test files
 tests/fixtures/paper_review_pdfs/*.pdf
 
-# Cursor / Claude 工作区
+# Cursor / Claude workspaces
 .cursor/
 .claude/
 
-# 文档和临时文件
+# Docs and temporary files
 *.md
 LICENSE
 README*.md
@@ -81,7 +80,7 @@ CHANGELOG.md
 test_*.html
 _tmp_*.txt
 
-# 大型依赖（如果有）
+# Large optional dependencies
 app/lean_formalization_env/
 app/data/
 tools/
