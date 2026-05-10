@@ -267,20 +267,34 @@ async def stream_chat(
     max_tokens: int = 4096,
     extra_messages: Optional[list[dict]] = None,
 ) -> AsyncIterator[str]:
-    """流式调用，逐 token yield **正文**字符串片段（reasoning 在此接口被丢弃）。
+    """流式调用，逐 token yield **最终正文**字符串片段。
 
-    若需要同时拿到推理链，请用 `stream_chat_with_reasoning`。
+    This path deliberately does not request reasoning_content. Some OpenAI-compatible
+    gateways place model thinking in the normal content stream when reasoning is
+    requested, which can leak chain-of-thought into user-facing learning cards.
+    Use stream_chat_with_reasoning() only for UI paths that explicitly render a
+    separate thinking panel.
     """
-    async for kind, text in stream_chat_with_reasoning(
-        user_message,
-        system=system,
-        model=model,
+    client = get_client()
+    messages = _build_messages(user_message, system=system, extra_messages=extra_messages)
+    stream = await client.chat.completions.create(
+        model=_effective_model(model),
+        messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
-        extra_messages=extra_messages,
-    ):
-        if kind == "content" and text:
-            yield text
+        stream=True,
+    )
+    try:
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            content = delta.content or ""
+            if content:
+                yield content
+    except Exception as _e:
+        logger.debug("stream_chat: stream interrupted (%s)", _e)
+        return
 
 
 async def stream_chat_with_reasoning(

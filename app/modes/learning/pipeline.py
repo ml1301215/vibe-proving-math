@@ -12,6 +12,7 @@ Pipeline 流程（4 个板块，均标注来源）：
 from __future__ import annotations
 
 import asyncio
+import re as _re
 from dataclasses import dataclass
 from typing import AsyncIterator, Optional
 
@@ -142,11 +143,52 @@ _STRIP_HEADING_KEYWORDS: frozenset[str] = frozenset({
     "## proof", "## elaboration", "## examples", "## background",
 })
 
+_THINKING_BLOCK_RE = _re.compile(
+    r"(?is)^\s*(?:<think>[\s\S]*?</think>\s*|"
+    r"(?:thinking|reasoning|analysis|chain[- ]of[- ]thought|internal reasoning)\s*:\s*[\s\S]*?(?:\n\s*\n|$))"
+)
+
+_LEARNING_BODY_START_RE = _re.compile(
+    r"(?im)^(?:"
+    r"(?:策略|证明思路|思路|首先|我们|为了|下面|记|设|令|证明|例|背景|从|在|这个|该)"
+    r"|(?:strategy|proof|we|to prove|first|let|suppose|assume|consider|example|background|historically)"
+    r"|(?:\*\*Step\s+\d+\*\*|Step\s+\d+|###\s+Example\s+\d+)"
+    r")"
+)
+
+_THINKING_LEAK_START_RE = _re.compile(
+    r"(?is)^\s*(?:"
+    r"crafting|i need to|i should|i will|i'm thinking|i am thinking|let me|we need to craft|"
+    r"need to create|plan:|approach:|analysis:|reasoning:"
+    r")\b"
+)
+
+
+def _strip_thinking_leak(text: str) -> str:
+    """Remove model planning text that some gateways leak into content."""
+    if not text:
+        return text
+    cleaned = text
+    prev = None
+    while cleaned != prev:
+        prev = cleaned
+        cleaned = _THINKING_BLOCK_RE.sub("", cleaned).lstrip()
+    if not _THINKING_LEAK_START_RE.match(cleaned):
+        return cleaned
+    match = _LEARNING_BODY_START_RE.search(cleaned)
+    if match and match.start() > 0:
+        return cleaned[match.start():].lstrip()
+    paras = _re.split(r"\n\s*\n", cleaned, maxsplit=1)
+    if len(paras) == 2 and len(paras[0]) < 1200:
+        return paras[1].lstrip()
+    return cleaned
+
 
 def _strip_leading_heading(text: str, heading: str) -> str:
     """剥掉 LLM 输出最前面的 ## 标题，避免与 pipeline 加的标题重复。"""
     if not text:
         return text
+    text = _strip_thinking_leak(text)
     lines = text.lstrip().splitlines()
     drop = 0
     for i, line in enumerate(lines[:3]):
@@ -162,10 +204,6 @@ def _strip_leading_heading(text: str, heading: str) -> str:
         else:
             break
     return "\n".join(lines[drop:])
-
-
-import re as _re
-
 
 def _fix_broken_dollar(text: str) -> str:
     """修复 LLM 在数字或小数点旁边错误插入 $ 的问题，以及把整句话包进 $...$ 的问题。"""

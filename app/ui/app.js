@@ -3321,15 +3321,17 @@ window.regenerateMessage = function(btn) {
 
   const { mode, statement, proofText, level, lang, model, attachments } = _lastAttempt;
 
-  // 移除当前 AI 回复（重新生成时）
   const bubbleEl = btn.closest('.msg-bubble');
-  if (bubbleEl && bubbleEl.dataset.role === 'ai') {
-    bubbleEl.remove();
-    // 同时从历史记录中移除最后一条 AI 消息
-    if (AppState.history.length > 0 && AppState.history[AppState.history.length - 1].role === 'ai') {
-      AppState.history.pop();
-    }
+  const contentEl = bubbleEl?.querySelector('.msg-content');
+  if (!bubbleEl || !contentEl) {
+    showToast('warning', AppState.lang === 'zh' ? '无法重新生成：目标消息不存在' : 'Cannot regenerate: target message missing');
+    return;
   }
+  bubbleEl.querySelector('.msg-actions')?.remove();
+  contentEl.innerHTML = makeThinkingInnerHtml(t('ui.thinking'));
+  contentEl.removeAttribute('data-solve-blueprint');
+  contentEl.removeAttribute('data-solve-statement');
+  _regenerateTargetContentEl = contentEl;
 
   // 恢复模式和模型
   AppState.set('mode', mode);
@@ -3372,20 +3374,33 @@ window.regenerateMessage = function(btn) {
 };
 
 
-function makeThinkingHtml(message) {
+function makeThinkingInnerHtml(message) {
   const msg = message || t('ui.thinking');
-  return `<div class="msg-content">
-    <div class="thinking-trace"><div class="thinking-step active">
-      <span class="step-dot pulsing"></span>
-      <span class="step-msg">${escapeHtml(msg)}</span>
-    </div></div>
-  </div>`;
+  return `<div class="thinking-trace"><div class="thinking-step active">
+    <span class="step-dot pulsing"></span>
+    <span class="step-msg">${escapeHtml(msg)}</span>
+  </div></div>`;
+}
+
+function makeThinkingHtml(message) {
+  return `<div class="msg-content">${makeThinkingInnerHtml(message)}</div>`;
 }
 
 function addMessage(role, content, opts = {}) {
   // 重新生成时跳过添加用户消息（避免重复显示）
   if (role === 'user' && _isRegenerating) {
     return null;
+  }
+
+  if (role === 'ai' && _isRegenerating) {
+    const target = takeRegenerateTargetContentEl();
+    if (target) {
+      const lastHistory = AppState.history[AppState.history.length - 1];
+      if (lastHistory && lastHistory.role === 'ai') lastHistory.content = '';
+      target.innerHTML = content ? renderMarkdown(content) : makeThinkingInnerHtml(t('ui.thinking'));
+      target.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      return target;
+    }
   }
 
   const container = document.getElementById('chat-container');
@@ -3493,9 +3508,22 @@ function addErrorInline(contentEl, errText) {
 
 let _lastAttempt = null;
 let _isRegenerating = false;  // 标志：是否正在重新生成（避免重复显示用户消息）
+let _regenerateTargetContentEl = null;
+
+function takeRegenerateTargetContentEl() {
+  const el = _regenerateTargetContentEl;
+  _regenerateTargetContentEl = null;
+  return el && el.isConnected ? el : null;
+}
+
 window.retryLastMessage = function() {
   if (!_lastAttempt) return;
   const { mode, statement, proofText } = _lastAttempt;
+  const contentEl = document.querySelector('.msg-error .msg-error-retry')?.closest('.msg-content') || null;
+  if (contentEl) {
+    contentEl.innerHTML = makeThinkingInnerHtml(t('ui.thinking'));
+    _regenerateTargetContentEl = contentEl;
+  }
   AppState.set('mode', mode);
   if (mode === 'reviewing' && proofText) {
     // 把上次内容回填到主输入框；附件已经在 chips 里
@@ -3535,8 +3563,8 @@ function buildLearnSkeletonHtml() {
     </details>`).join('');
 }
 
-function _setLearnSectionStatus(sectionId, state, detailMsg) {
-  const el = document.querySelector(`#learn-body [data-section="${sectionId}"] .section-status`);
+function _setLearnSectionStatus(sectionId, state, detailMsg, root = document) {
+  const el = root.querySelector(`.learn-body [data-section="${sectionId}"] .section-status`);
   if (!el) return;
   el.className = 'section-status section-status-' + state;
   if (state === 'running' && detailMsg) {
@@ -3552,13 +3580,13 @@ function _setLearnSectionStatus(sectionId, state, detailMsg) {
   el.textContent = t(map[state] || map.pending);
 }
 
-function _applyLearningSectionsToDom(sections) {
+function _applyLearningSectionsToDom(sections, root = document) {
   if (!sections) return;
   for (const key of LEARN_SECTION_ORDER) {
     const sec = sections[key];
     if (!sec || !String(sec.content || '').trim()) continue;
     if (String(sec.content).includes('section-skeleton')) continue;
-    const body = document.querySelector(`#learn-body [data-section="${key}"] .accordion-body`);
+    const body = root.querySelector(`.learn-body [data-section="${key}"] .accordion-body`);
     if (body) {
       body.innerHTML = renderMarkdown(sec.content);
       renderKatexFallback(body);
@@ -3579,9 +3607,29 @@ function rebuildLearningMarkdown(sections) {
   return parts.length ? parts.join('\n\n') + '\n' : '';
 }
 
-function _renderLearnSectionError(sectionId, message) {
-  _setLearnSectionStatus(sectionId, 'error');
-  const body = document.querySelector(`#learn-body [data-section="${sectionId}"] .accordion-body`);
+function stripLearningThinkingLeak(text) {
+  if (!text) return text;
+  let out = String(text);
+  let prev = null;
+  const blockRe = /^\s*(?:<think>[\s\S]*?<\/think>\s*|(?:thinking|reasoning|analysis|chain[- ]of[- ]thought|internal reasoning)\s*:\s*[\s\S]*?(?:\n\s*\n|$))/i;
+  while (out !== prev) {
+    prev = out;
+    out = out.replace(blockRe, '').trimStart();
+  }
+  if (!/^\s*(?:crafting|i need to|i should|i will|i'm thinking|i am thinking|let me|we need to craft|need to create|plan:|approach:|analysis:|reasoning:)\b/i.test(out)) {
+    return out;
+  }
+  const startRe = /^(?:策略|证明思路|思路|首先|我们|为了|下面|记|设|令|证明|例|背景|从|在|这个|该|strategy|proof|we|to prove|first|let|suppose|assume|consider|example|background|historically|\*\*Step\s+\d+\*\*|Step\s+\d+|###\s+Example\s+\d+)/im;
+  const m = startRe.exec(out);
+  if (m && m.index > 0) return out.slice(m.index).trimStart();
+  const parts = out.split(/\n\s*\n/);
+  if (parts.length > 1 && parts[0].length < 1200) return parts.slice(1).join('\n\n').trimStart();
+  return out;
+}
+
+function _renderLearnSectionError(sectionId, message, root = document) {
+  _setLearnSectionStatus(sectionId, 'error', undefined, root);
+  const body = root.querySelector(`.learn-body [data-section="${sectionId}"] .accordion-body`);
   if (!body) return;
   const msg = escapeHtml(message || '');
   const fail = escapeHtml(t('ui.learn.sectionFailed'));
@@ -3602,7 +3650,8 @@ window.retryLearnSection = async function(sectionId) {
   if (retryLearnSection._running && retryLearnSection._running === sectionId) return;
   retryLearnSection._running = sectionId;
   _setLearnSectionStatus(sectionId, 'running', t('ui.learn.statusRunning'));
-  const body = document.querySelector(`#learn-body [data-section="${sectionId}"] .accordion-body`);
+  const root = window._lastLearnContentEl || document;
+  const body = root.querySelector(`.learn-body [data-section="${sectionId}"] .accordion-body`);
   if (body) {
     body.innerHTML = _makeSkeletonHtml();
   }
@@ -3654,14 +3703,14 @@ window.retryLearnSection = async function(sectionId) {
             retryRaw += cleanChunk;
             const one = parseLearningOutput(retryRaw);
             if (one && one[sectionId] && !String(one[sectionId].content).includes('section-skeleton')) {
-              const bodyEl = document.querySelector(`#learn-body [data-section="${sectionId}"] .accordion-body`);
+              const bodyEl = root.querySelector(`.learn-body [data-section="${sectionId}"] .accordion-body`);
               if (bodyEl) {
                 bodyEl.innerHTML = renderMarkdown(one[sectionId].content);
                 renderKatexFallback(bodyEl);
               }
             }
           } else if (obj.section_error) {
-            _renderLearnSectionError(obj.section_error.id, obj.section_error.message);
+            _renderLearnSectionError(obj.section_error.id, obj.section_error.message, root);
             return;
           } else if (obj.error) {
             throw new Error(obj.error);
@@ -3678,9 +3727,9 @@ window.retryLearnSection = async function(sectionId) {
     const lastHistory = AppState.history[AppState.history.length - 1];
     if (lastHistory && lastHistory.role === 'ai') lastHistory.content = window._lastLearnRawBuffer;
     if (window._lastLearnBubbleEl) addMessageActions(window._lastLearnBubbleEl, window._lastLearnRawBuffer);
-    _setLearnSectionStatus(sectionId, 'done');
+    _setLearnSectionStatus(sectionId, 'done', undefined, root);
   } catch (err) {
-    _renderLearnSectionError(sectionId, err.message || String(err));
+    _renderLearnSectionError(sectionId, err.message || String(err), root);
     showToast('error', err.message || String(err));
   } finally {
     retryLearnSection._running = null;
@@ -3714,8 +3763,9 @@ async function handleLearning(statement) {
   addMessage('user', statement);
   const contentEl = addMessage('ai', null);
   if (!contentEl) return;
+  window._lastLearnContentEl = contentEl;
 
-  contentEl.innerHTML = `<div class="learn-body" id="learn-body">${buildLearnSkeletonHtml()}</div>`;
+  contentEl.innerHTML = `<div class="learn-body">${buildLearnSkeletonHtml()}</div>`;
   AppState.set('isStreaming', true);
 
   startWaitTips(contentEl, { firstDelayMs: 800 });
@@ -3723,7 +3773,7 @@ async function handleLearning(statement) {
   const ctrl = new AbortController();
   AppState._abortController = ctrl;
 
-  const bodyEl = () => document.getElementById('learn-body');
+  const bodyEl = () => contentEl.querySelector('.learn-body');
 
   let rawBuffer = '';
 
@@ -3778,22 +3828,22 @@ async function handleLearning(statement) {
               .replace(/\\\[([^\$]*?)\$/g, '$$$$1$$');
             rawBuffer += cleanChunk;
             const sections = parseLearningOutput(rawBuffer, { allowEmpty: true });
-            if (bodyEl()) _applyLearningSectionsToDom(sections);
+            if (bodyEl()) _applyLearningSectionsToDom(sections, contentEl);
           } else if (obj.step !== undefined && obj.status !== undefined) {
             const st = obj.step;
             const msg = obj.status;
             const order = LEARN_SECTION_ORDER.slice(0, 4);
             if (st === 'done') {
-              order.forEach(k => _setLearnSectionStatus(k, 'done'));
+              order.forEach(k => _setLearnSectionStatus(k, 'done', undefined, contentEl));
             } else {
               const idx = order.indexOf(st);
               if (idx >= 0) {
-                for (let i = 0; i < idx; i++) _setLearnSectionStatus(order[i], 'done');
-                _setLearnSectionStatus(st, 'running', msg);
+                for (let i = 0; i < idx; i++) _setLearnSectionStatus(order[i], 'done', undefined, contentEl);
+                _setLearnSectionStatus(st, 'running', msg, contentEl);
               }
             }
           } else if (obj.section_error) {
-            _renderLearnSectionError(obj.section_error.id, obj.section_error.message);
+            _renderLearnSectionError(obj.section_error.id, obj.section_error.message, contentEl);
           } else if (obj.error) {
             throw new Error(obj.error);
           }
@@ -3837,9 +3887,9 @@ async function handleLearning(statement) {
       if (!hasRealContent && body && body.querySelector('.section-skeleton')) {
         // 骨架占位 → 改为「本节未返回内容」空状态
         body.innerHTML = `<p class="section-empty-hint">${isZh ? '本节内容未生成，可点击「重新生成」重试。' : 'No content generated. Click "Regenerate" to retry.'}</p>`;
-        _setLearnSectionStatus(k, 'error');
+        _setLearnSectionStatus(k, 'error', undefined, contentEl);
       } else {
-        _setLearnSectionStatus(k, 'done');
+        _setLearnSectionStatus(k, 'done', undefined, contentEl);
       }
     });
     // 最终 KaTeX 兜底渲染
@@ -3898,9 +3948,9 @@ function parseLearningOutput(text, opts) {
     if (!def) return;
 
     if (sections[def.key]) {
-      sections[def.key].content += '\n\n' + content;
+      sections[def.key].content += '\n\n' + stripLearningThinkingLeak(content);
     } else {
-      sections[def.key] = { title: h.title, content };
+      sections[def.key] = { title: h.title, content: stripLearningThinkingLeak(content) };
     }
   });
 
@@ -5160,6 +5210,7 @@ function _finalizeFormalize(contentEl, result, stopped, statement = '') {
 
 async function handleReviewing(focusText) {
   focusText = (focusText || '').trim();
+  const isZh = AppState.lang === 'zh';
 
   const list = AppState.settings.attachments || [];
   const pdfAttach = list.find(a => a.rawFile && /\.pdf$/i.test(a.name));
@@ -5519,7 +5570,7 @@ async function handleSearching(query) {
   };
   addMessage('user', query);
   const contentEl = addMessage('ai', null);
-  if (contentEl) contentEl.innerHTML = makeThinkingHtml(t('ui.searchingTheorems'));
+  if (contentEl) contentEl.innerHTML = makeThinkingInnerHtml(t('ui.searchingTheorems'));
 
   AppState.set('isStreaming', true);
   const ctrl = new AbortController();
@@ -6737,10 +6788,12 @@ async function finishAppInitAfterAuth() {
   updateUserUi();
   UI.switchView(AppState.view);
   UI.updateMode(AppState.mode);
-  await loadAppConfig();
-  await SessionHistory.sync();
   _syncModeTabs();
   localStorage.removeItem('vp_custom_model');
+  Promise.resolve()
+    .then(loadAppConfig)
+    .then(() => SessionHistory.sync())
+    .catch(err => console.warn('Post-login init failed', err));
   setTimeout(checkHealth, 1200);
 }
 
