@@ -564,7 +564,7 @@ function applyLang(lang) {
     if (txtEl) {
       tipEl.classList.remove('visible');
       setTimeout(() => {
-        txtEl.innerHTML = _renderMathText(tips[_waitTipIdx % tips.length]);
+        txtEl.innerHTML = _renderWaitTipText(tips[_waitTipIdx % tips.length]);
         tipEl.classList.add('visible');
         renderKatexFallback(tipEl);
       }, 400);
@@ -2753,7 +2753,7 @@ function _startReviewWaitTips(el) {
   setTimeout(() => {
     if (!AppState.settings.waitTips) return;
     if (!el.isConnected) return;
-    el.innerHTML = _renderMathText(tips[_rvWaitTipIdx]);
+    el.innerHTML = _renderWaitTipText(tips[_rvWaitTipIdx]);
     renderKatexFallback(el);
 
     // 开始定时轮播
@@ -2762,7 +2762,7 @@ function _startReviewWaitTips(el) {
       const ts = _waitTipsShuffled[AppState.lang] || _waitTipsShuffled.zh;
       _rvWaitTipIdx = (_rvWaitTipIdx + 1) % ts.length;
       if (el.isConnected) {
-        el.innerHTML = _renderMathText(ts[_rvWaitTipIdx]);
+        el.innerHTML = _renderWaitTipText(ts[_rvWaitTipIdx]);
         renderKatexFallback(el);
       } else {
         _stopReviewWaitTips(null);
@@ -2791,6 +2791,29 @@ function _renderMathText(text) {
   }
 }
 
+function _inlineMathDelimiters(text) {
+  if (!text) return text;
+  const compactMath = (inner) => inner.replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => `$${compactMath(inner)}$`)
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => `$${compactMath(inner)}$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => `$${compactMath(inner)}$`);
+}
+
+function _renderWaitTipText(text) {
+  if (text === null || text === undefined) return '';
+  const raw = _inlineMathDelimiters(normalizeEscapedNewlines(String(text)))
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!raw) return '';
+  try {
+    const normalized = _inlineMathDelimiters(autoWrapMath(sanitizeLatex(raw)));
+    return escapeHtml(normalized);
+  } catch {
+    return escapeHtml(raw);
+  }
+}
+
 function _setWaitTipText(bar, text) {
   if (!bar) return;
   let txtEl = bar.querySelector('.wait-tip-text');
@@ -2798,7 +2821,7 @@ function _setWaitTipText(bar, text) {
     bar.innerHTML = '<span class="wait-tip-icon" aria-hidden="true">💡</span><span class="wait-tip-text"></span>';
     txtEl = bar.querySelector('.wait-tip-text');
   }
-  txtEl.innerHTML = _renderMathText(text);
+  txtEl.innerHTML = _renderWaitTipText(text);
 }
 
 function startWaitTips(containerEl, opts) {

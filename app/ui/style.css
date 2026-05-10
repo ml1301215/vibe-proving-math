@@ -2596,6 +2596,16 @@ html[data-theme="dark"] .section-status-done { color: #4ade80; }
   font-style: italic;
 }
 
+.review-wait-tip .katex-display {
+  display: inline-block;
+  margin: 0 0.15em;
+  text-align: initial;
+}
+
+.review-wait-tip .katex {
+  font-size: 1em;
+}
+
 .review-wait-tip:empty {
   display: none;
 }
