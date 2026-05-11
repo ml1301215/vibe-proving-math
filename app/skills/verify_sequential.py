@@ -158,7 +158,7 @@ You have NOT seen how the proof was generated. Your job is to verify each logica
 
 ## Your verification process for each step:
 1. Check if it follows logically from previous steps and stated assumptions
-2. If the step cites a theorem/lemma: check the TheoremSearch results provided — if the theorem is NOT FOUND in the database, mark as critical_error
+2. If the step cites a theorem/lemma: use external theorem search results as auxiliary evidence, not as the sole source of truth.
 3. If the cited theorem IS found but is applied incorrectly (wrong hypotheses, wrong domain), mark as critical_error
 4. If the step makes an unjustified leap without citing a theorem, mark as gap
 5. If everything is correct and well-cited, mark as passed
@@ -170,15 +170,15 @@ After verifying all steps, check whether the proof actually reaches and proves t
 - If the proof concludes something *stronger or weaker* than the target, set goal_reached = false
 - If the proof is merely a computation or reformulation without a final logical conclusion, set goal_reached = false
 
-## TheoremSearch context usage:
+## External theorem search context usage:
 - "✓ found" with high similarity (>70%): the theorem exists and can be used — verify it's applied correctly
-- "✗ not_found" or low similarity: treat the citation as UNVERIFIED — if the step's validity depends on this theorem, mark as critical_error
+- "✗ not_found" or low similarity: treat the citation as UNVERIFIED. Usually mark the step as gap if the argument depends on it; mark critical_error only when you can independently determine the cited theorem is false/nonexistent or the inference is mathematically invalid.
 - "timeout/error": treat conservatively — mark as gap if the step relies on it
 
 ## Verdict options:
 - "passed": logically valid, well-justified, and any cited theorems are verified to exist and apply
 - "gap": the step is plausible but missing justification, or a minor citation issue
-- "critical_error": the step is logically wrong, uses a non-existent theorem as a load-bearing reference, or makes an invalid logical leap
+- "critical_error": the step is logically wrong, uses a theorem you can independently identify as false/nonexistent as a load-bearing reference, or makes an invalid logical leap
 
 ## Output style for mathematical expressions:
 """ + _LATEX_STYLE_INSTRUCTION + """
@@ -200,8 +200,8 @@ Output MUST be valid JSON with this schema:
         {
             "step_num": 2,
             "text": "By the Fundamental Theorem of Algebra, ...",
-            "verdict": "critical_error",
-            "reason": "TheoremSearch could not verify the cited theorem with sufficient confidence, so the inference that `$p(x)$` splits over `$\\mathbb{C}$` is unsupported.",
+            "verdict": "gap",
+            "reason": "External theorem search could not verify the cited theorem with sufficient confidence. The citation should be checked or justified independently before accepting this inference.",
             "cited_theorem": "Fundamental Theorem of Algebra"
         }
     ]

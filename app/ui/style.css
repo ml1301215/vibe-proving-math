@@ -1100,6 +1100,7 @@ kbd {
   margin-top: 6px;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .message:hover .msg-actions { display: flex; }

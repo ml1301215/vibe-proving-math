@@ -29,7 +29,8 @@ from dataclasses import dataclass, asdict
 from typing import Optional
 
 from core.theorem_search import search_theorems as _raw_search
-from core.text_sanitize import sanitize_dict, strip_non_math_latex
+from core.matlas_search import search_matlas as _matlas_search
+from core.text_sanitize import strip_non_math_latex
 
 
 # ── 数据清洗（去除 LaTeX 排版残留与噪声）────────────────────────────────────────
@@ -81,13 +82,13 @@ class TheoremMatch:
     link: str
     paper_title: str
     paper_authors: list[str]
+    source: str = "theorem_search"
 
     def to_dict(self) -> dict:
         data = asdict(self)
-        # 对所有文本字段进行LaTeX清理，确保前端不显示LaTeX宏命令残留
+        # 定理陈述里经常含裸 LaTeX。不要在后端剥离数学命令，否则前端会显示残缺陈述。
+        # 标题和论文元数据仍做轻量清洗，避免文档环境噪声。
         data["name"] = strip_non_math_latex(data["name"])
-        data["body"] = strip_non_math_latex(data["body"])
-        data["slogan"] = strip_non_math_latex(data["slogan"])
         data["paper_title"] = strip_non_math_latex(data["paper_title"])
         data["paper_authors"] = [strip_non_math_latex(a) for a in self.paper_authors]
         return data
@@ -127,8 +128,43 @@ async def search_theorems(
             link=r.get("link") or paper.get("link", ""),
             paper_title=_clean_latex_noise(paper.get("title", "")),
             paper_authors=paper.get("authors") if isinstance(paper.get("authors"), list) else [],
+            source="theorem_search",
         )
         results.append(tm)
+
+    matlas_raw = await _matlas_search(query, top_k=max(top_k, 10))
+    for idx, r in enumerate(matlas_raw):
+        if not isinstance(r, dict):
+            continue
+        title = str(r.get("title") or r.get("name") or "Matlas result").strip()
+        entity_name = str(r.get("entity_name") or "").strip()
+        statement = str(r.get("statement") or r.get("body") or r.get("abstract") or "").strip()
+        raw_authors = r.get("authors")
+        if isinstance(raw_authors, list):
+            authors = [str(a) for a in raw_authors]
+        elif isinstance(raw_authors, str):
+            authors = [a.strip() for a in raw_authors.split(",") if a.strip()]
+        else:
+            authors = []
+        year = str(r.get("year") or "").strip()
+        doi = str(r.get("doi") or "").strip()
+        url = str(r.get("url") or r.get("link") or "").strip()
+        if doi and not url:
+            url = f"https://doi.org/{doi}"
+        slogan_parts = [p for p in (year, doi) if p]
+        tm = TheoremMatch(
+            name=_clean_latex_noise(entity_name or title),
+            body=_clean_latex_noise(statement),
+            slogan=_clean_latex_noise(" · ".join(slogan_parts)),
+            similarity=_safe_float(r.get("similarity") or r.get("score"), max(0.0, 0.72 - idx * 0.015)),
+            score=_safe_float(r.get("score") or r.get("similarity"), max(0.0, 0.72 - idx * 0.015)),
+            link=url,
+            paper_title=_clean_latex_noise(title),
+            paper_authors=authors,
+            source="matlas",
+        )
+        if tm.body or tm.name:
+            results.append(tm)
 
     # 排序：先按 similarity 降序，再按 query 词命中加权
     q_lower = (query or "").lower()
@@ -143,9 +179,10 @@ async def search_theorems(
 
     # 写回 score = similarity + bonus，并以 score 降序，让 results 顺序和 score 字段一致
     for tm in results:
-        tm.score = round(tm.similarity + _bonus(tm), 6)
+        source_bonus = 0.02 if tm.source == "theorem_search" else 0.0
+        tm.score = round(tm.similarity + _bonus(tm) + source_bonus, 6)
     results.sort(key=lambda x: x.score, reverse=True)
-    return results
+    return results[:top_k]
 
 
 def format_theorems_for_prompt(matches: list[TheoremMatch], *, max_chars: int = 3000) -> str:
@@ -153,7 +190,7 @@ def format_theorems_for_prompt(matches: list[TheoremMatch], *, max_chars: int = 
     if not matches:
         return "（未找到相关定理）"
 
-    lines = ["【相关定理参考（TheoremSearch 检索）】"]
+    lines = ["【相关定理参考（TheoremSearch / Matlas 检索）】"]
     total = 0
     for i, m in enumerate(matches, 1):
         citation = m.to_citation()

@@ -54,7 +54,7 @@ const I18N = {
       proofUploadTip: '上传文件 (.pdf / .tex / .txt / .md)',
       attachTip: '上传论文或证明文件 (.pdf / .tex / .txt / .md)',
       proofPlaceholder: '点击 📎 上传 PDF 论文，或粘贴证明文本…',
-      contextPdfTooLong: 'PDF 共 {pages} 页，目前仅支持 {limit} 页，请拆分后上传',
+      contextPdfTooLong: 'PDF 共 {pages} 页，页数较多，解析速度和整体性能可能下降',
       pdfExtracting: '正在解析 PDF…',
       proofFocusPlaceholder: '可补充审查重点（可选）…',
       stop: '■ 停止', stopAria: '停止生成',
@@ -150,7 +150,7 @@ const I18N = {
         showLabel: '展开思考',
         hideLabel: '收起思考',
       },
-      copy: '复制', copied: '已复制', regenerate: '重新生成', retry: '重试', stopped: '已停止',
+      copy: '复制', copied: '已复制', saveFile: '保存文件', savedFile: '已保存', regenerate: '重新生成', retry: '重试', stopped: '已停止',
       noHistory: '暂无历史', noProjects: '暂无项目',
       solveStarting: '启动求解…',
       solveDone: '求解完成',
@@ -253,7 +253,7 @@ const I18N = {
       proofUploadTip: 'Upload file (.tex / .txt / .md)',
       attachTip: 'Attach paper or proof file (.pdf / .tex / .txt / .md)',
       proofPlaceholder: 'Click 📎 to upload PDF, or paste proof text…',
-      contextPdfTooLong: 'PDF has {pages} pages. Currently only {limit} pages are supported. Please split it first.',
+      contextPdfTooLong: 'PDF has {pages} pages. Parsing speed and overall performance may be reduced.',
       pdfExtracting: 'Parsing PDF...',
       proofFocusPlaceholder: 'Optional: add a review focus…',
       stop: '■ Stop', stopAria: 'Stop generation',
@@ -349,7 +349,7 @@ const I18N = {
         showLabel: 'Show thinking',
         hideLabel: 'Hide thinking',
       },
-      copy: 'Copy', copied: 'Copied!', regenerate: 'Regenerate', retry: 'Retry', stopped: 'Stopped',
+      copy: 'Copy', copied: 'Copied!', saveFile: 'Save file', savedFile: 'Saved', regenerate: 'Regenerate', retry: 'Retry', stopped: 'Stopped',
       noHistory: 'No history yet', noProjects: 'No projects yet',
       solveStarting: 'Starting…',
       solveDone: 'Solve complete',
@@ -3330,10 +3330,23 @@ function addMessageActions(bubbleEl, rawText, opts = {}) {
   actionsEl.innerHTML = `
     ${regenerateBtnHtml}
     <button class="msg-action-btn" onclick="copyMsgText(this)">⎘ ${t('ui.copy')}</button>
+    <button class="msg-action-btn" onclick="saveMsgText(this)">⇩ ${t('ui.saveFile')}</button>
     ${latexBtnHtml}
   `;
   actionsEl.dataset.rawText = rawText;
   bubbleEl.appendChild(actionsEl);
+}
+
+function _downloadTextFile(text, filename) {
+  const blob = new Blob([text || ''], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 window.triggerLatexFromBubble = function(btn) {
@@ -3366,6 +3379,16 @@ window.copyMsgText = function(btn) {
     btn.classList.add('copied');
     setTimeout(() => { btn.innerHTML = `⎘ ${t('ui.copy')}`; btn.classList.remove('copied'); }, 2000);
   }).catch(() => showToast('error', t('ui.err.copyFailed')));
+};
+
+window.saveMsgText = function(btn) {
+  const raw = btn.closest('.msg-actions')?.dataset.rawText || '';
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  _downloadTextFile(raw, `vibe-proving-${AppState.mode || 'chat'}-${stamp}.md`);
+  const prev = btn.innerHTML;
+  btn.textContent = `✓ ${t('ui.savedFile')}`;
+  btn.classList.add('copied');
+  setTimeout(() => { btn.innerHTML = prev; btn.classList.remove('copied'); }, 2000);
 };
 
 window.regenerateMessage = function(btn) {
@@ -4285,7 +4308,24 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
 }
 
 async function _streamLatexPanel(contentEl, blueprint, statement = '') {
-  const panel = contentEl.querySelector('.solve-latex-panel');
+  let panel = contentEl.querySelector('.solve-latex-panel');
+  if (!panel) {
+    const layout = contentEl.querySelector('.solve-layout') || contentEl;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="solve-latex-panel" style="display:none">
+        <div class="solve-latex-header">
+          <span class="solve-latex-title">LaTeX</span>
+          <div class="solve-latex-actions">
+            <span class="solve-latex-status"></span>
+            <button class="solve-latex-copy-btn" title="${t('ui.copy')} LaTeX">${t('ui.copy')}</button>
+          </div>
+        </div>
+        <pre class="solve-latex-code"><code></code></pre>
+      </div>`;
+    layout.appendChild(wrapper.firstElementChild);
+    panel = contentEl.querySelector('.solve-latex-panel');
+  }
   if (!panel) return;
   panel.style.display = '';
 
@@ -4368,6 +4408,7 @@ async function _streamLatexPanel(contentEl, blueprint, statement = '') {
     }
 
     if (!hasError) {
+      if (codeEl && !codeEl.textContent && latex) codeEl.textContent = _stripFences(latex);
       if (statusEl) statusEl.textContent = t('ui.latexDone');
       // freshCopyBtn 已替换 copyBtn，用 panel 重新查询
       const activeCopyBtn = panel.querySelector('.solve-latex-copy-btn');
@@ -5708,6 +5749,7 @@ function renderSearchResults(contentEl, data) {
     const name = r.name || r.theorem_name || '';
     const decl = r.declaration || r.lean_decl || r.body || '';
     const paper = r.paper_title || r.source || '';
+    const sourceName = r.source === 'matlas' ? 'Matlas' : 'TheoremSearch';
     const slogan = r.slogan || '';
     const link = r.link || '';
     // 只允许 http/https 协议，防止 javascript: 等恶意链接
@@ -5734,7 +5776,7 @@ function renderSearchResults(contentEl, data) {
       <div class="search-result-item">
         <div class="search-result-header">
           <div class="search-result-name">${nameHtml}</div>
-          <div class="search-result-score ${simCls}">${simPct}%</div>
+          <div class="search-result-score ${simCls}">${escapeHtml(sourceName)} · ${simPct}%</div>
         </div>
         ${slogan ? `<div class="search-result-slogan">${renderMathText(slogan)}</div>` : ''}
         ${decl ? `<div class="search-result-decl lean-decl">${renderMathText(decl)}</div>` : ''}
@@ -6741,9 +6783,8 @@ function bindEvents() {
             const extracted = await _extractPdfAttachment(file);
             const pageCount = Number(extracted.page_count || 0);
             const limit = Number(extracted.max_pages || 10);
-            if (pageCount > limit) {
-              showToast('error', t('input.contextPdfTooLong', { pages: pageCount, limit }));
-              continue;
+            if (extracted.over_page_limit || pageCount > limit) {
+              showToast('warning', t('input.contextPdfTooLong', { pages: pageCount, limit }));
             }
             const contextText = `[PDF: ${file.name}, ${pageCount || '?'} pages]\n${extracted.text || ''}`;
             const att = Attachments.add(file, contextText, file);
