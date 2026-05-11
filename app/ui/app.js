@@ -54,6 +54,8 @@ const I18N = {
       proofUploadTip: '上传文件 (.pdf / .tex / .txt / .md)',
       attachTip: '上传论文或证明文件 (.pdf / .tex / .txt / .md)',
       proofPlaceholder: '点击 📎 上传 PDF 论文，或粘贴证明文本…',
+      contextPdfTooLong: 'PDF 共 {pages} 页，目前仅支持 {limit} 页，请拆分后上传',
+      pdfExtracting: '正在解析 PDF…',
       proofFocusPlaceholder: '可补充审查重点（可选）…',
       stop: '■ 停止', stopAria: '停止生成',
       sendTip: '发送 (↵)', sendAria: '发送',
@@ -182,6 +184,7 @@ const I18N = {
         fileTooLarge: '文件大小超过 50KB，请精简后再上传',
         fileReadFailed: '文件读取失败：{e}',
         unsupportedFile: '暂不支持该文件类型，请上传 .tex / .txt / .md',
+        unsupportedContextFile: '学习模式和问题求解目前只支持上传 PDF',
         copyFailed: '复制失败，请手动选择',
         projectCreated: '项目创建成功',
         projectFailed: '创建失败：{e}',
@@ -250,6 +253,8 @@ const I18N = {
       proofUploadTip: 'Upload file (.tex / .txt / .md)',
       attachTip: 'Attach paper or proof file (.pdf / .tex / .txt / .md)',
       proofPlaceholder: 'Click 📎 to upload PDF, or paste proof text…',
+      contextPdfTooLong: 'PDF has {pages} pages. Currently only {limit} pages are supported. Please split it first.',
+      pdfExtracting: 'Parsing PDF...',
       proofFocusPlaceholder: 'Optional: add a review focus…',
       stop: '■ Stop', stopAria: 'Stop generation',
       sendTip: 'Send (↵)', sendAria: 'Send',
@@ -378,6 +383,7 @@ const I18N = {
         fileTooLarge: 'File exceeds 50KB. Please trim it before uploading.',
         fileReadFailed: 'Failed to read file: {e}',
         unsupportedFile: 'Unsupported file type. Use .tex / .txt / .md',
+        unsupportedContextFile: 'Learning and solving modes currently support PDF attachments only',
         copyFailed: 'Copy failed, please select manually',
         projectCreated: 'Project created',
         projectFailed: 'Failed: {e}',
@@ -873,6 +879,19 @@ function _normalizeUnicodeSubSup(text) {
     });
 }
 
+function _sanitizeMathBlock(mathStr) {
+  if (!mathStr) return mathStr;
+  return String(mathStr)
+    // Remove literal escaped newlines that leak into formulas, e.g. `\nf(n)`.
+    // Keep real LaTeX commands that start with n, such as \nu, \nabla, \neq, \notin.
+    .replace(/\\+n(?!u\b|abla\b|e(?:q)?\b|ot(?:in)?\b|i\b)\s*/g, '')
+    // OCR/LLM sometimes emits `|to|` instead of `\to`.
+    .replace(/\|to\|/g, ' \\to ')
+    .replace(/\|mapsto\|/g, ' \\mapsto ')
+    // Recover common LaTeX commands that lost the leading backslash inside math.
+    .replace(/(?<!\\)\b(mathbb|mathcal|mathfrak|mathrm|mathbf|mathit|mathsf|mathtt|operatorname|frac|sqrt|sum|prod|int|lim|to|mapsto|in|notin|subset|subseteq|cup|cap|leq|geq|neq|forall|exists|infty|cdot|times)\b/g, '\\$1');
+}
+
 function sanitizeLatex(text) {
   if (!text) return text;
   // 0) Unicode 上下标归一化
@@ -881,17 +900,17 @@ function sanitizeLatex(text) {
   //    LLM 常把下标漏写为第二个 `{...}`（如 `\mathcal{C}{cf}`、`\mathbb{R}{n}`），
   //    KaTeX 会把第二个 {} 当作错误的额外参数。仅在 \mathcal/\mathbb/\mathfrak 这类
   //    "单参数命令" 后才修复，避免误伤 \frac 等多参数命令。
-  const fix = (mathStr) => {
-    return mathStr.replace(
-      /(\\(?:mathcal|mathbb|mathfrak|mathrm|mathbf|mathit|mathsf|mathtt|operatorname)\{[^{}]+\})\{([^{}]+)\}/g,
-      '$1_{$2}'
-    );
-  };
+  const fix = (mathStr) => _sanitizeMathBlock(mathStr).replace(
+    /(\\(?:mathcal|mathbb|mathfrak|mathrm|mathbf|mathit|mathsf|mathtt|operatorname)\{[^{}]+\})\{([^{}]+)\}/g,
+    '$1_{$2}'
+  );
   let s = text;
   // $$...$$
   s = s.replace(/\$\$([\s\S]*?)\$\$/g, (m, inner) => `$$${fix(inner)}$$`);
   // $...$（单行）
   s = s.replace(/\$([^\n$]+?)\$/g, (m, inner) => `$${fix(inner)}$`);
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g, (m, inner) => `\\(${fix(inner)}\\)`);
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, (m, inner) => `\\[${fix(inner)}\\]`);
 
   // 2) 末尾落单 `$`：奇数个 `$` 会让 KaTeX 把整个段落当成 inline math。
   //    若全文 `$` 数量为奇数且最后一个无对应闭合，自动补齐。
@@ -1117,12 +1136,14 @@ function normalizeEscapedNewlines(text) {
   let s = String(text);
   if (!s.includes('\\n')) return s;
 
+  const mathContinuation = String.raw`\s*(?:[A-Za-z](?:\s*\(|[_^]|\s*\^)|[a-z]\s*\(|[A-Z]\s*(?:[=+\-*/^_]|\\(?:in|cup|sqcup|subset|subseteq|le|leq|ge|geq))|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm|alpha|beta|gamma|delta|theta|lambda|mu|pi|sigma|phi|psi|omega|to|mapsto)|[+\-*/=,;:)\]}])`;
+
   // Handle doubled escaping from JSON-ish payloads before single-backslash cases.
-  s = s.replace(/\\\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|[A-Z]\s*(?:[=+\-*/^_]|\\(?:in|cup|sqcup|subset|subseteq|le|leq|ge|geq))|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
+  s = s.replace(new RegExp(String.raw`\\\\n(?=${mathContinuation})`, 'g'), '');
   s = s.replace(/\\\\n(?=(?:\s|$|[#>*\-+0-9`$|]|[A-Z][a-z]|Step\b|Then\b|This\b|For\b|If\b|We\b|Now\b))/g, '\n');
 
   // Fix malformed math fragments like `\nx^T Lx` or `\nV = ...` inside display math.
-  s = s.replace(/\\n(?=\s*(?:[A-Za-z](?:[_^]|\s*\^)|[A-Z]\s*(?:[=+\-*/^_]|\\(?:in|cup|sqcup|subset|subseteq|le|leq|ge|geq))|\\(?:sum|prod|int|frac|sqrt|lim|begin|end|mathbf|mathbb|mathcal|mathrm)))/g, '');
+  s = s.replace(new RegExp(String.raw`\\n(?=${mathContinuation})`, 'g'), '');
 
   // Convert literal newline escapes that are clearly prose / Markdown separators.
   s = s.replace(/\\n(?=(?:\s|$|[#>*\-+0-9`$|]|[A-Z][a-z]|Step\b|Then\b|This\b|For\b|If\b|We\b|Now\b))/g, '\n');
@@ -1449,6 +1470,20 @@ function closePdfGallery() {
   if (modal) modal.style.display = 'none';
 }
 
+async function _extractPdfAttachment(file) {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  const resp = await fetch('/attachments/pdf_text', {
+    method: 'POST',
+    body: fd,
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data.detail || `HTTP ${resp.status}`);
+  }
+  return data;
+}
+
 /* ─────────────────────────────────────────────────────────────
    5.4 附件管理（DeepSeek 风格 chip）
 ───────────────────────────────────────────────────────────── */
@@ -1468,6 +1503,7 @@ const Attachments = {
     this.render();
     updateInputPlaceholder();
     if (isPdf && rawFile) _loadPdfMeta(rawFile, att);
+    return att;
   },
   remove(idx) {
     const att = AppState.settings.attachments[idx];
@@ -1911,15 +1947,16 @@ const UI = {
 
   updateMode(mode) {
     const isReview = mode === 'reviewing';
+    const supportsAttachment = ['learning', 'solving', 'reviewing'].includes(mode);
     const isSolving = mode === 'solving';
     const attachBtn = document.getElementById('attach-btn');
-    if (attachBtn) attachBtn.style.display = isReview ? '' : 'none';
+    if (attachBtn) attachBtn.style.display = supportsAttachment ? '' : 'none';
     const chipsEl = document.getElementById('attachment-chips');
     if (chipsEl) {
       const has = (AppState.settings.attachments || []).length > 0;
-      chipsEl.style.display = (isReview && has) ? '' : 'none';
+      chipsEl.style.display = (supportsAttachment && has) ? '' : 'none';
     }
-    if (!isReview && (AppState.settings.attachments || []).length) {
+    if (!supportsAttachment && (AppState.settings.attachments || []).length) {
       Attachments.clear();
     }
     const maxRow = document.getElementById('param-max-theorems');
@@ -3766,6 +3803,19 @@ async function handleLearning(statement) {
   const level = AppState.settings.level;
   const lang = AppState.lang === 'zh' ? 'zh' : AppState.lang === 'en' ? 'en' : _detectLang(statement);
   const model = AppState.model;
+  const pdfAttachments = (AppState.settings.attachments || [])
+    .filter(a => a.rawFile && /\.pdf$/i.test(a.name))
+    .map(a => ({
+      name: a.name,
+      pageCount: a.pageCount,
+      thumbnails: a.thumbnails || [],
+      objectUrl: a.objectUrl || null,
+    }));
+  const textAttachments = (AppState.settings.attachments || [])
+    .filter(a => a.content && typeof a.content === 'string')
+    .map(a => a.content)
+    .filter(Boolean);
+  const chatContext = buildChatContextForRequest();
 
   // 保存完整请求参数以支持重新生成
   _lastAttempt = {
@@ -3783,7 +3833,7 @@ async function handleLearning(statement) {
     lang,
     model,
   };
-  addMessage('user', statement);
+  addMessage('user', statement, { pdfAttachments });
   const contentEl = addMessage('ai', null);
   if (!contentEl) return;
   window._lastLearnContentEl = contentEl;
@@ -3812,6 +3862,8 @@ async function handleLearning(statement) {
         project_id: AppState.projectId,
         user_id: AppState.userId,
         lang,
+        text_attachments: textAttachments.length ? textAttachments : undefined,
+        chat_context: chatContext.length ? chatContext : undefined,
       }),
       signal: ctrl.signal,
     });
@@ -3932,6 +3984,7 @@ async function handleLearning(statement) {
   }
   saveCurrentSession(statement);
   refreshCurrentUser().catch(() => {});
+  Attachments.clear();
   smartScroll(contentEl);
 }
 
@@ -4015,13 +4068,22 @@ function buildAccordionHtml(sections, opts) {
 
 async function handleSolving(statement) {
   const model = AppState.model;
+  const pdfAttachments = (AppState.settings.attachments || [])
+    .filter(a => a.rawFile && /\.pdf$/i.test(a.name))
+    .map(a => ({
+      name: a.name,
+      pageCount: a.pageCount,
+      thumbnails: a.thumbnails || [],
+      objectUrl: a.objectUrl || null,
+    }));
+  const chatContext = buildChatContextForRequest();
   // 保存完整请求参数以支持重新生成
   _lastAttempt = {
     mode: 'solving',
     statement,
     model
   };
-  addMessage('user', statement);
+  addMessage('user', statement, { pdfAttachments });
 
   // solving 模式：不用 AppStream（不展示 CoT），改用专属的步骤进度 UI
   const contentEl = addMessage('ai', null);
@@ -4074,6 +4136,7 @@ async function handleSolving(statement) {
         project_id: AppState.projectId,
         user_id: AppState.userId,
         lang: _detectLang(statement),
+        chat_context: chatContext.length ? chatContext : undefined,
         text_attachments: (AppState.settings.attachments || [])
           .filter(a => a.content && typeof a.content === 'string')
           .map(a => a.content)
@@ -4217,6 +4280,7 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
   }
   saveCurrentSession(statement);
   refreshCurrentUser().catch(() => {});
+  Attachments.clear();
   smartScroll(contentEl);
 }
 
@@ -5699,6 +5763,17 @@ function saveCurrentSession(title) {
   }
 }
 
+function buildChatContextForRequest() {
+  const maxItems = 4;
+  return (AppState.history || [])
+    .filter(msg => msg && (msg.role === 'user' || msg.role === 'ai') && typeof msg.content === 'string' && msg.content.trim())
+    .slice(-maxItems)
+    .map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+}
+
 /* ─────────────────────────────────────────────────────────────
    15. 发送
 ───────────────────────────────────────────────────────────── */
@@ -5719,6 +5794,15 @@ async function sendMessage() {
       // 添加toast提示
       const isZh = AppState.lang === 'zh';
       showToast('warning', isZh ? '请输入内容后再发送' : 'Please enter something before sending');
+      return;
+    }
+
+    if (!text && ['learning', 'solving'].includes(AppState.mode) && (AppState.settings.attachments || []).length) {
+      const row = textarea?.closest('.textarea-row');
+      row?.classList.add('shake');
+      setTimeout(() => row?.classList.remove('shake'), 500);
+      const isZh = AppState.lang === 'zh';
+      showToast('warning', isZh ? '请输入问题或命题，再附加 PDF 上下文' : 'Please enter a question or statement with the PDF context');
       return;
     }
 
@@ -6622,7 +6706,7 @@ function bindEvents() {
       console.error('Nanonets config save failed', err);
     }
   });
-  // 证明附件：DeepSeek 风格回形针入口（仅 reviewing 模式下显示）
+  // 附件：reviewing 支持 PDF/文本；learning/solving 支持短 PDF 作为上下文。
   document.getElementById('attach-btn')?.addEventListener('click', () => {
     document.getElementById('proof-file-input')?.click();
   });
@@ -6638,13 +6722,39 @@ function bindEvents() {
         continue;
       }
       const isPdf = /\.pdf$/i.test(file.name);
+      if (AppState.mode !== 'reviewing' && !isPdf) {
+        showToast('error', t('ui.err.unsupportedContextFile'));
+        continue;
+      }
       if (isPdf) {
         if (file.size > _MAX_PDF_SIZE) {
           showToast('error', AppState.lang === 'zh' ? 'PDF 超过 50 MB 上限' : 'PDF exceeds 50 MB limit');
           continue;
         }
-        // Store the raw File object for direct upload to /review_pdf_stream
-        Attachments.add(file, null, file);
+        if (AppState.mode === 'reviewing') {
+          // Store the raw File object for direct upload to /review_pdf_stream
+          Attachments.add(file, null, file);
+        } else {
+          const toastMsg = t('input.pdfExtracting');
+          if (toastMsg) showToast('info', toastMsg);
+          try {
+            const extracted = await _extractPdfAttachment(file);
+            const pageCount = Number(extracted.page_count || 0);
+            const limit = Number(extracted.max_pages || 10);
+            if (pageCount > limit) {
+              showToast('error', t('input.contextPdfTooLong', { pages: pageCount, limit }));
+              continue;
+            }
+            const contextText = `[PDF: ${file.name}, ${pageCount || '?'} pages]\n${extracted.text || ''}`;
+            const att = Attachments.add(file, contextText, file);
+            if (att && pageCount) {
+              att.pageCount = pageCount;
+              Attachments.render();
+            }
+          } catch (err) {
+            showToast('error', err.message || String(err));
+          }
+        }
       } else {
         if (file.size > _MAX_TEXT_SIZE) {
           showToast('error', t('ui.err.fileTooLarge'));

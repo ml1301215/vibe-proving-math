@@ -37,6 +37,9 @@ timeout     = 10
 
 [app]
 log_level = "INFO"
+max_context_pdf_pages = 10
+chat_context_turns = 4
+chat_context_max_chars = 6000
 
 [auth]
 # 超级账户可修改 API 配置；普通注册用户只能使用服务。

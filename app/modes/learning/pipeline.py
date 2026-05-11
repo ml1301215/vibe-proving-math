@@ -118,6 +118,7 @@ async def run_learning_pipeline(
     *,
     level: str = "undergraduate",
     model: Optional[str] = None,
+    kb_context: Optional[str] = None,
     lang: Optional[str] = None,
 ) -> LearningOutput:
     """非流式包装：收集 stream_learning_pipeline 的所有输出，返回 LearningOutput。"""
@@ -126,6 +127,7 @@ async def run_learning_pipeline(
         statement,
         level=level,
         model=model,
+        kb_context=kb_context,
         lang=lang,
     ):
         if not chunk.startswith("<!--vp-"):
