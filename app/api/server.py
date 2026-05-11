@@ -531,7 +531,7 @@ def _upload_to_data_url(content: bytes, content_type: str | None, filename: str 
     return f"data:{mime};base64,{encoded}"
 
 
-async def _run_review_stream(review_coro_factory, *, start_status: str):
+async def _run_review_stream(review_coro_factory, *, start_status: str, request: Request | None = None):
     import base64 as _b64s
     import json as _js
 
@@ -564,7 +564,13 @@ async def _run_review_stream(review_coro_factory, *, start_status: str):
 
         try:
             while True:
-                kind, k2, payload = await queue.get()
+                if request is not None and await request.is_disconnected():
+                    logger.info("paper review stream disconnected; cancelling pipeline")
+                    break
+                try:
+                    kind, k2, payload = await asyncio.wait_for(queue.get(), timeout=0.5)
+                except asyncio.TimeoutError:
+                    continue
                 if kind is SENTINEL_DONE:
                     break
                 if kind == "status":
@@ -1108,6 +1114,7 @@ async def review_stream(req: ReviewRequest, user: dict = Depends(current_user)):
 
 @app.post("/review_pdf_stream")
 async def review_pdf_stream(
+    request: Request,
     file: UploadFile = File(...),
     max_theorems: int = Form(8, ge=1, le=50),
     user_id: str = Form("anonymous"),
@@ -1229,6 +1236,7 @@ async def review_pdf_stream(
     return await _run_review_stream(
         _factory,
         start_status="<!--vp-status:start|启动论文上传审查…-->",
+        request=request,
     )
 
 
