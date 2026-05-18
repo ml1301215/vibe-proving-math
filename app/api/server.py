@@ -1051,6 +1051,15 @@ async def solve(req: SolveRequest, user: dict = Depends(current_user)):
                     return
 
                 yield "<!--vp-status:done|证明流程完成-->"
+                meta_payload = {
+                    "confidence": result.confidence,
+                    "verdict": result.verdict,
+                    "references": result.references,
+                }
+                encoded_meta = _b64.b64encode(
+                    json.dumps(meta_payload, ensure_ascii=False).encode("utf-8")
+                ).decode("ascii")
+                yield f"<!--vp-result:{encoded_meta}-->"
                 yield result.blueprint
             finally:
                 _reset_user_llm_context(llm_token)
