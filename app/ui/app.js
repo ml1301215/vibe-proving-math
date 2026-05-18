@@ -111,6 +111,7 @@ const I18N = {
     ui: {
       status: { proved: '已证明', unproven: '未证明', partial: '部分成立',
                 direct_hit: '直接命中',
+                counterexample: '发现反例',
                 'no confident solution': '主动拒绝',
                 unverifiable: '无法核查', error: '错误',
                 confidence: '置信度', citations: '引用',
@@ -310,6 +311,7 @@ const I18N = {
     ui: {
       status: { proved: 'Proved', unproven: 'Unproven', partial: 'Partial',
                 direct_hit: 'Direct hit',
+                counterexample: 'Counterexample',
                 'no confident solution': 'Refused',
                 unverifiable: 'Unverifiable', error: 'Error',
                 confidence: 'Confidence', citations: 'Citations',
@@ -896,6 +898,11 @@ function _sanitizeMathBlock(mathStr) {
     .replace(/\|mapsto\|/g, ' \\mapsto ')
     // OCR may turn the conditional bar in `P(x_i|xpa_i)` into an unknown command.
     .replace(/\\xpa\b/g, ' \\mid xpa')
+    .replace(/\|(?=\\?frac\b)/g, '\\')
+    // Common OCR/LLM shorthand: a{i_t} should be a_{i_t}; |a_i|2^2 means norm squared.
+    .replace(/\b([A-Za-z])\{((?:i|j|k|m|n|t)(?:_[A-Za-z0-9]+)?)\}/g, '$1_{$2}')
+    .replace(/\|([^|\n]{1,80})\|2\^2/g, '\\lVert $1\\rVert_2^2')
+    .replace(/\|([^|\n]{1,80})\|_?2\^2/g, '\\lVert $1\\rVert_2^2')
     // Normalize Unicode math before KaTeX sees it.
     .replace(/𝔼/g, '\\mathbb{E}')
     .replace(/ℙ/g, '\\mathbb{P}')
@@ -1138,6 +1145,41 @@ function autoWrapMath(text) {
   // 还原 placeholders
   s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => placeholders[+i] || '');
   return s;
+}
+
+function preprocessSolveBlueprint(text) {
+  if (!text) return text;
+  let s = normalizeEscapedNewlines(String(text));
+  s = s.replace(/\\\s+(?=(?:frac|sqrt|sum|prod|int|lim|mathbb|mathcal|mathrm|overline|lVert|rVert|to|in|leq|geq|neq)\b)/g, '\\');
+  s = s.replace(/\|(?=\\?frac\b)/g, '\\');
+  s = s.replace(/([A-Za-z])\\\s*\^\s*\{/g, '$1^{');
+  s = s.replace(/\be\\?\s*\^\s*\{/g, 'e^{');
+  s = s.replace(/\bx\\?\s*\^\s*\{/g, 'x^{');
+  s = s.replace(/\ba\\?\s*\^\s*T\b/g, 'a^T');
+  s = s.replace(/\b([A-Za-z])\{((?:i|j|k|m|n|t)(?:_[A-Za-z0-9]+)?)\}/g, '$1_{$2}');
+  s = s.replace(/\|([^|\n]{1,80})\|2\^2/g, '\\lVert $1\\rVert_2^2');
+  s = s.replace(/\|([^|\n]{1,80})\|_?2\^2/g, '\\lVert $1\\rVert_2^2');
+  s = s.replace(/\$([^$\n]*[\u4e00-\u9fff][^$\n]*)\$/g, (_, inner) => _splitMixedMathText(inner));
+  return s;
+}
+
+function _splitMixedMathText(inner) {
+  const parts = [];
+  const mathish = /(?:\\[A-Za-z]+|[A-Za-z]\s*(?:[_^]|\{|\\?\^)|[A-Za-z]_\{|[=+\-*/<>]|\\lVert|\\rVert|\|[^|]+\||\d)/;
+  for (const piece of String(inner).split(/([，,；;。、]\s*|从而|其中|因此|得到|代入上式得|为更新公式)/)) {
+    if (!piece) continue;
+    if (/^(?:[，,；;。、]\s*|从而|其中|因此|得到|代入上式得|为更新公式)$/.test(piece)) {
+      parts.push(piece);
+      continue;
+    }
+    const trimmed = piece.trim();
+    if (mathish.test(trimmed) && !/[\u4e00-\u9fff]/.test(trimmed)) {
+      parts.push(_wrapInlineMathPayload(trimmed));
+    } else {
+      parts.push(piece);
+    }
+  }
+  return parts.join('');
 }
 
 /* plan M.3：分段缓存的增量 Markdown 渲染
@@ -4184,7 +4226,7 @@ async function handleSolving(statement) {
   startWaitTips(contentEl);
 
   let rawBuffer = '';
-  let metadata = { confidence: 0, verdict: 'unproven', references: [] };
+  let metadata = { confidence: null, verdict: '', references: [] };
 
   const updateStatus = (msg) => {
     const pill = contentEl.querySelector('.solve-status-pill .solve-status-text');
@@ -4258,6 +4300,8 @@ async function handleSolving(statement) {
           const obj = JSON.parse(raw);
           if (obj.chunk !== undefined) {
             rawBuffer += obj.chunk;
+          } else if (obj.result !== undefined) {
+            applySolveMetadataPayload(obj.result, metadata);
           } else if (obj.status !== undefined) {
             const step = obj.step || '';
             if (step === 'done') {
@@ -4342,12 +4386,13 @@ function _finalizeSolve(contentEl, rawBuffer, metadata, statement, stopped) {
   if (bodyEl && rawBuffer) {
     // 提取 metadata（置信度、判定、引用）并渲染 verdict bar
     extractSolveMetadata(rawBuffer, metadata);
+    metadata = normalizeSolveMetadata(metadata);
     // 有置信度或非默认判定时显示 verdict bar
-    if (metadata.verdict && (metadata.verdict !== 'unproven' || metadata.confidence > 0)) {
+    if (metadata.verdict) {
       const barHtml = buildVerdictBar(metadata);
-      bodyEl.innerHTML = barHtml + renderMarkdown(rawBuffer);
+      bodyEl.innerHTML = barHtml + renderMarkdown(preprocessSolveBlueprint(rawBuffer));
     } else {
-    bodyEl.innerHTML = renderMarkdown(rawBuffer);
+    bodyEl.innerHTML = renderMarkdown(preprocessSolveBlueprint(rawBuffer));
     }
     renderKatexFallback(bodyEl);
   }
@@ -4499,7 +4544,7 @@ function extractSolveMetadata(text, meta) {
   const stripped = text.replace(/\*+/g, '').replace(/[：]/g, ':');
 
   const confM = stripped.match(/(?:置信度|confidence)\s*:?\s*([\d.]+)\s*%?/i);
-  if (confM) {
+  if (confM && (meta.confidence === null || meta.confidence === undefined)) {
     let v = parseFloat(confM[1]);
     if (!Number.isNaN(v)) {
       // 接受 0-1 (0.87) 或 0-100 (87) 两种形式
@@ -4511,28 +4556,78 @@ function extractSolveMetadata(text, meta) {
   const verdM = stripped.match(/(?:判定|verdict)\s*:?\s*([^\n,，。;；]+)/i);
   if (verdM) {
     const raw = verdM[1].toLowerCase().trim();
-    if (/proved|direct[\s_-]?hit/.test(raw))               meta.verdict = 'proved';
-    else if (/partial/.test(raw))                          meta.verdict = 'partial';
-    else if (/no[\s_-]?confident/.test(raw))               meta.verdict = 'no confident solution';
-    else if (/refused|unproven/.test(raw))                 meta.verdict = 'unproven';
-    else if (/unverifiable/.test(raw))                     meta.verdict = 'unverifiable';
-    else if (raw.length < 30)                              meta.verdict = raw.replace(/[*_]/g, '');
+    if (!meta.verdict) {
+      if (/proved|direct[\s_-]?hit/.test(raw))               meta.verdict = 'proved';
+      else if (/partial/.test(raw))                          meta.verdict = 'partial';
+      else if (/no[\s_-]?confident/.test(raw))               meta.verdict = 'no confident solution';
+      else if (/refused|unproven/.test(raw))                 meta.verdict = 'unproven';
+      else if (/unverifiable/.test(raw))                     meta.verdict = 'unverifiable';
+      else if (raw.length < 30)                              meta.verdict = raw.replace(/[*_]/g, '');
+    }
   }
 
   const refMatches = [...text.matchAll(/[-*]\s*([✓✗])\s+(.+?)\s+\((verified|not_found|error)\)/g)];
-  meta.references = refMatches.map(m => ({
-    ok: m[1] === '✓', name: m[2].trim(), status: m[3],
-  }));
+  if ((!meta.references || !meta.references.length) && refMatches.length) {
+    meta.references = refMatches.map(m => ({
+      ok: m[1] === '✓', name: m[2].trim(), status: m[3],
+    }));
+  }
+}
+
+function applySolveMetadataPayload(payload, meta) {
+  if (!payload || typeof payload !== 'object') return;
+  if (payload.confidence !== undefined && payload.confidence !== null) {
+    let v = Number(payload.confidence);
+    if (!Number.isNaN(v)) {
+      if (v <= 1) v *= 100;
+      meta.confidence = Math.max(0, Math.min(100, v));
+    }
+  }
+  if (payload.verdict) {
+    const raw = String(payload.verdict).toLowerCase().replace(/[_-]+/g, ' ').trim();
+    if (raw === 'direct hit') meta.verdict = 'direct_hit';
+    else if (raw === 'no confident solution') meta.verdict = 'no confident solution';
+    else if (raw === 'counterexample') meta.verdict = 'counterexample';
+    else if (raw) meta.verdict = raw;
+  }
+  if (Array.isArray(payload.references)) {
+    meta.references = payload.references.map(r => ({
+      ok: !r.status || String(r.status).toLowerCase() === 'verified',
+      name: r.name || r.matched || '',
+      status: r.status || '',
+    }));
+  }
+}
+
+function normalizeSolveMetadata(meta) {
+  const pct = meta.confidence === null || meta.confidence === undefined
+    ? null
+    : Math.min(Math.max(Math.round(Number(meta.confidence) || 0), 0), 100);
+  let verdict = String(meta.verdict || '').toLowerCase().trim();
+  if (!verdict) {
+    if (pct === null) verdict = 'unverifiable';
+    else if (pct >= 80) verdict = 'proved';
+    else if (pct >= 40) verdict = 'partial';
+    else verdict = 'no confident solution';
+  }
+  return {
+    ...meta,
+    confidence: pct === null ? 0 : pct,
+    verdict,
+    references: Array.isArray(meta.references) ? meta.references : [],
+  };
 }
 
 function buildVerdictBar(meta) {
-  const pct = Math.min(Math.max(Math.round(meta.confidence), 0), 100);
+  meta = normalizeSolveMetadata(meta);
+  const pct = meta.confidence;
   const verdictKey = meta.verdict.toLowerCase();
   const verdictMap = {
     'proved': { cls: 'proved', icon: '✓' },
     'direct_hit': { cls: 'proved', icon: '⊕' },
     'partial': { cls: 'partial', icon: '◐' },
     'unproven': { cls: 'unproven', icon: '◌' },
+    'counterexample': { cls: 'unproven', icon: '✗' },
     'no confident solution': { cls: 'refused', icon: '⊘' },
     'unverifiable': { cls: 'refused', icon: '?' },
     'error': { cls: 'refused', icon: '⚠' },
